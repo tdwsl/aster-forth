@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 char aster_dict[ASTER_DICTSZ];
 int aster_stack[ASTER_STACKSZ];
@@ -9,6 +10,12 @@ int aster_rstack[ASTER_RSTACKSZ];
 int aster_sp=0, aster_rsp=0, aster_pc=0, aster_here=0, aster_old=0;
 struct aster_word aster_words[ASTER_WORDSSZ];
 int aster_nwords=0;
+char (*aster_nextChar)(void) = 0;
+char *aster_string;
+FILE *aster_fp;
+int aster_status = ASTER_RUN;
+char aster_nameBuf[ASTER_NAMEBUFSZ];
+char *aster_nextName = aster_nameBuf;
 
 void aster_addC(void (*fun)(void), const char *name, int flag)
 {
@@ -101,11 +108,11 @@ void aster_doToken(char *s)
     } else { printf("%s ?\n", s); exit(1); }
 }
 
-void aster_print(int addr)
+void aster_print(int addr, int addr2)
 {
     void (*fun)(void);
     struct aster_word *w;
-    while(addr < aster_here)
+    while(addr < addr2)
     {
         fun = *(void (**)(void))(aster_dict+addr);
         printf("%.8X ", addr);
@@ -125,7 +132,78 @@ void aster_print(int addr)
         } else if(fun == aster_ret) {
             printf("ret");
         } else if(w = aster_findC(fun)) printf("%s", w->name);
-        else printf("0x%x", fun);
+        else printf("0x%x", (unsigned)(size_t)fun);
         printf("\n");
     }
 }
+
+void aster_runAll()
+{
+    char buf[512];
+    char *s;
+    s = buf;
+    char c;
+    for(;;)
+    {
+        *s = aster_nextChar();
+        if(*s <= ' ') {
+            c = *s;
+            if(s != buf) {
+                *s = 0;
+                aster_doToken(buf);
+                s = buf;
+            }
+            if((c == 0 || c == '\n') && aster_status != ASTER_WORD
+                    && aster_old != aster_here) {
+                *(void (**)(void))(aster_dict+aster_here) = 0;
+                aster_pc = aster_old;
+                aster_run();
+                aster_here = aster_old;
+            }
+            if(c == 0) return;
+        } else {
+            if(*s >= 'a' && *s <= 'z') *s += 'A'-'a';
+            s++;
+        }
+    }
+}
+
+char aster_nextChar_string()
+{
+    if(!(*aster_string)) return 0;
+    return *(aster_string++);
+}
+
+void aster_runString(char *s)
+{
+    char (*old_nextChar)(void);
+    char *old_string;
+    old_nextChar = aster_nextChar;
+    old_string = aster_string;
+    aster_nextChar = aster_nextChar_string;
+    aster_string = s;
+    aster_runAll();
+    aster_string = old_string;
+    aster_nextChar = old_nextChar;
+}
+
+char aster_nextChar_file()
+{
+    if(feof(aster_fp)) return 0;
+    return fgetc(aster_fp);
+}
+
+void aster_runFile(const char *filename)
+{
+    char (*old_nextChar)(void);
+    FILE *old_fp;
+    old_nextChar = aster_nextChar;
+    old_fp = aster_fp;
+    aster_fp = fopen(filename, "r");
+    if(!aster_fp) { printf("failed to open %s\n", filename); exit(1); }
+    aster_nextChar = aster_nextChar_file;
+    aster_runAll();
+    aster_fp = old_fp;
+    aster_nextChar = old_nextChar;
+}
+
