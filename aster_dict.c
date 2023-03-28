@@ -860,6 +860,11 @@ void aster_w_postpone()
     }
 }
 
+void aster_w_qcompile()
+{
+    aster_stack[aster_sp++] = (aster_status == ASTER_WORD)*-1;
+}
+
 void aster_init()
 {
     aster_here = ASTER_DICTSTART;
@@ -920,20 +925,20 @@ void aster_init()
     aster_addC(aster_w_backslash, "\\", ASTER_IMMEDIATE);
     aster_addC(aster_w_lbrace, "(", ASTER_IMMEDIATE);
     aster_addC(aster_w_immediate, "IMMEDIATE", 0);
-    aster_addC(aster_w_if, "IF", ASTER_IMMEDIATE);
-    aster_addC(aster_w_then, "THEN", ASTER_IMMEDIATE);
-    aster_addC(aster_w_else, "ELSE", ASTER_IMMEDIATE);
-    aster_addC(aster_w_do, "DO", ASTER_IMMEDIATE);
-    aster_addC(aster_w_loop, "LOOP", ASTER_IMMEDIATE);
-    aster_addC(aster_w_plusloop, "+LOOP", ASTER_IMMEDIATE);
-    aster_addC(aster_w_unloop, "UNLOOP", ASTER_IMMEDIATE);
-    aster_addC(aster_w_leave, "LEAVE", ASTER_IMMEDIATE);
+    aster_addC(aster_w_if, "IF", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_then, "THEN", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_else, "ELSE", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_do, "DO", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_loop, "LOOP", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_plusloop, "+LOOP", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_unloop, "UNLOOP", 0);
+    aster_addC(aster_w_leave, "LEAVE", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
     aster_addC(aster_w_i, "I", 0);
     aster_addC(aster_w_j, "J", 0);
     aster_addC(aster_w_col, ":", 0);
     aster_addC(aster_w_semi, ";", ASTER_IMMEDIATE);
-    aster_addC(aster_w_see,  "SEE", ASTER_IMMEDIATE);
-    aster_addC(aster_w_forget, "FORGET", ASTER_IMMEDIATE);
+    aster_addC(aster_w_see,  "SEE", 0);
+    aster_addC(aster_w_forget, "FORGET", 0);
     aster_addC(aster_w_include, "INCLUDE", 0);
     aster_addC(aster_w_set, "!", 0);
     aster_addC(aster_w_get, "@", 0);
@@ -950,9 +955,12 @@ void aster_init()
     aster_addC(aster_w_savestring, "SAVE-STRING", 0);
     aster_addC(aster_w_char, "CHAR", 0);
     aster_addC(aster_w_tick, "'", 0);
-    aster_addC(aster_w_literal, "LITERAL", ASTER_IMMEDIATE);
+    aster_addC(aster_w_literal, "LITERAL",
+        ASTER_IMMEDIATE|ASTER_COMPILEONLY);
     aster_addC(aster_w_cell, "CELL", 0);
     aster_addC(aster_w_execute, "EXECUTE", 0);
-    aster_addC(aster_w_postpone, "POSTPONE", ASTER_IMMEDIATE);
+    aster_addC(aster_w_postpone, "POSTPONE",
+        ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(aster_w_qcompile, "COMPILE?", 0);
     aster_runString((char*)aster_bootstr);
 }

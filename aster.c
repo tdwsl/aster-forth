@@ -91,7 +91,7 @@ void aster_doToken(char *s)
     w = aster_findWord(s);
     if(aster_status != ASTER_WORD) {
         if(w) {
-            assert(!(w->flag & ASTER_IMMEDIATE));
+            assert(!(w->flag & ASTER_COMPILEONLY));
             if(w->flag & ASTER_C) w->fun();
             else {
                 aster_rstack[aster_rsp++] = aster_here;

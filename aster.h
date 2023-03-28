@@ -17,6 +17,7 @@ enum
 {
     ASTER_C = 1,
     ASTER_IMMEDIATE = 2,
+    ASTER_COMPILEONLY = 4,
 };
 
 enum
