@@ -89,10 +89,28 @@ void aster_doToken(char *s)
     struct aster_word *w;
     int n;
     w = aster_findWord(s);
-    if(w) {
+    if(aster_status != ASTER_WORD) {
+        if(w) {
+            assert(!(w->flag & ASTER_IMMEDIATE));
+            if(w->flag & ASTER_C) w->fun();
+            else {
+                aster_rstack[aster_rsp++] = aster_here;
+                *(void (**)(void))(aster_dict+aster_here) = 0;
+                aster_pc = w->addr;
+                aster_run();
+            }
+        } else if(aster_num(s, &n))
+            aster_stack[aster_sp++] = n;
+        else { printf("%s ?\n", s); exit(1); }
+    } else if(w) {
         if(w->flag & ASTER_IMMEDIATE) {
             if(w->flag & ASTER_C) w->fun();
-            else { aster_pc = w->addr; aster_run(); }
+            else {
+                aster_rstack[aster_rsp++] = aster_here;
+                *(void (**)(void))(aster_dict+aster_here) = 0;
+                aster_pc = w->addr;
+                aster_run();
+            }
         } else if(w->flag & ASTER_C) {
             *(void (**)(void))(aster_dict+aster_here) = w->fun;
             aster_here += sizeof(void (*)(void))/sizeof(char);
