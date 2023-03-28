@@ -8,6 +8,10 @@
 #define ASTER_RSTACKSZ 128
 #define ASTER_WORDSSZ 5999
 #define ASTER_NAMEBUFSZ 4096
+#define ASTER_BASE 0
+#define ASTER_STRINGSTART sizeof(int)
+#define ASTER_STRINGSZ 8192
+#define ASTER_DICTSTART (ASTER_STRINGSTART+ASTER_STRINGSZ)
 
 enum
 {
@@ -25,7 +29,7 @@ extern char aster_dict[ASTER_DICTSZ];
 extern int aster_stack[ASTER_STACKSZ];
 extern int aster_rstack[ASTER_RSTACKSZ];
 extern int aster_sp, aster_rsp, aster_pc, aster_here, aster_old;
-extern int aster_status;
+extern int aster_status, aster_stringPtr;
 
 struct aster_word
 {

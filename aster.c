@@ -7,7 +7,9 @@
 char aster_dict[ASTER_DICTSZ];
 int aster_stack[ASTER_STACKSZ];
 int aster_rstack[ASTER_RSTACKSZ];
-int aster_sp=0, aster_rsp=0, aster_pc=0, aster_here=0, aster_old=0;
+int aster_sp=0, aster_rsp=0, aster_pc=0;
+int aster_here=ASTER_DICTSTART, aster_old=ASTER_DICTSTART;
+int aster_stringPtr=ASTER_STRINGSTART;
 struct aster_word aster_words[ASTER_WORDSSZ];
 int aster_nwords=0;
 char (*aster_nextChar)(void) = 0;
@@ -63,7 +65,7 @@ int aster_num(char *s, int *n)
     int f = 0;
     if(*s == '-') { f = 1; s++; }
     if(*s == 0) return 0;
-    base = 10;
+    base = *(int*)(aster_dict+ASTER_BASE);
     *n = 0;
     do {
         if(base <= 10) {
