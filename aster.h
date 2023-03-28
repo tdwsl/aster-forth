@@ -31,6 +31,7 @@ struct aster_word
 {
     const char *name;
     int flag, addr;
+    short size;
     void (*fun)(void);
 };
 
@@ -52,6 +53,7 @@ void aster_run();
 void aster_runAll();
 void aster_runString(char *s);
 void aster_runFile(const char *filename);
+void aster_runPrompt();
 
 void aster_call();
 void aster_ret();

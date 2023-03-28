@@ -1,5 +1,6 @@
 #include "aster.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
@@ -241,6 +242,117 @@ void aster_w_shl()
     aster_stack[aster_sp-1] <<= 1;
 }
 
+void aster_w_and()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] &= aster_stack[aster_sp-1];
+    aster_sp--;
+}
+
+void aster_w_or()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] |= aster_stack[aster_sp-1];
+    aster_sp--;
+}
+
+void aster_w_xor()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] ^= aster_stack[aster_sp-1];
+    aster_sp--;
+}
+
+void aster_w_invert()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = ~aster_stack[aster_sp-1];
+}
+
+void aster_w_equ()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] == aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_gre()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] > aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_les()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] < aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_greequ()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] >= aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_lesequ()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] <= aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_neq()
+{
+    assert(aster_sp >= 2);
+    aster_stack[aster_sp-2] =
+        (aster_stack[aster_sp-2] != aster_stack[aster_sp-1])*-1;
+    aster_sp--;
+}
+
+void aster_w_zequ()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] == 0)*-1;
+}
+
+void aster_w_zgre()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] > 0)*-1;
+}
+
+void aster_w_zles()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] < 0)*-1;
+}
+
+void aster_w_zgreequ()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] >= 0)*-1;
+}
+
+void aster_w_zlesequ()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] <= 0)*-1;
+}
+
+void aster_w_zneq()
+{
+    assert(aster_sp);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] != 0)*-1;
+}
+
 void aster_w_prnum()
 {
     assert(aster_sp);
@@ -285,9 +397,31 @@ void aster_w_prstack()
     printf("\n");
 }
 
+void aster_w_bye()
+{
+    exit(0);
+}
+
+void aster_w_immediate()
+{
+    assert(aster_nwords);
+    aster_words[aster_nwords-1].flag |= ASTER_IMMEDIATE;
+}
+
+void aster_w_backslash()
+{
+    char c;
+    while((c = aster_nextChar()) && c != '\n');
+}
+
+void aster_w_lbrace()
+{
+    char c;
+    while((c = aster_nextChar()) && c != '\n' && c != ')');
+}
+
 void aster_w_if()
 {
-    assert(aster_sp);
     *(void (**)(void))(aster_dict+aster_here) = aster_jz;
     aster_here += sizeof(void (*)(void))/sizeof(char);
     *(int*)(aster_dict+aster_here) = 0;
@@ -329,6 +463,7 @@ void aster_w_do()
     aster_here += sizeof(void (*)(void))/sizeof(char);
     aster_rstack[aster_rsp++] = aster_here;
     aster_rstack[aster_rsp++] = 0;
+    aster_rstack[aster_rsp++] = -1;
 }
 
 void aster_loop()
@@ -352,7 +487,10 @@ void aster_plusloop()
 void aster_w_loop()
 {
     int i;
-    assert(aster_rsp >= 2);
+    assert(aster_rsp >= 3);
+    /*for(i = 0; i < aster_rsp; i++) printf("%d ", aster_rstack[i]);
+    printf("\n");*/
+    aster_rsp--;
     *(void (**)(void))(aster_dict+aster_here) = aster_loop;
     aster_here += sizeof(void (*)(void))/sizeof(char);
     *(void (**)(void))(aster_dict+aster_here) = aster_jz;
@@ -362,7 +500,7 @@ void aster_w_loop()
     aster_here += sizeof(int)/sizeof(char);
     for(i = 0; i < aster_rstack[aster_rsp-1]; i++)
         *(int*)(aster_dict+
-            aster_rstack[aster_rsp-2-aster_rstack[aster_rsp-1]+i]) =
+            aster_rstack[aster_rsp-2-i]) =
                 aster_here;
     aster_rsp -= aster_rstack[aster_rsp-1]+2;
     *(void (**)(void))(aster_dict+aster_here) = aster_w_unloop;
@@ -372,7 +510,8 @@ void aster_w_loop()
 void aster_w_plusloop()
 {
     int i;
-    assert(aster_rsp >= 2);
+    assert(aster_rsp >= 3);
+    aster_rsp--;
     *(void (**)(void))(aster_dict+aster_here) = aster_plusloop;
     aster_here += sizeof(void (*)(void))/sizeof(char);
     *(void (**)(void))(aster_dict+aster_here) = aster_jz;
@@ -382,7 +521,7 @@ void aster_w_plusloop()
     aster_here += sizeof(int)/sizeof(char);
     for(i = 0; i < aster_rstack[aster_rsp-1]; i++)
         *(int*)(aster_dict+
-            aster_rstack[aster_rsp-2-aster_rstack[aster_rsp-1]+i]) =
+            aster_rstack[aster_rsp-2-i]) =
                 aster_here;
     aster_rsp -= aster_rstack[aster_rsp-1]+2;
     *(void (**)(void))(aster_dict+aster_here) = aster_w_unloop;
@@ -391,12 +530,17 @@ void aster_w_plusloop()
 
 void aster_w_leave()
 {
-    assert(aster_rsp >= 2);
+    int i1, i;
+    assert(aster_rsp >= 3);
     *(void (**)(void))(aster_dict+aster_here) = aster_jmp;
     aster_here += sizeof(void (*)(void))/sizeof(char);
-    aster_stack[aster_sp] = aster_stack[aster_sp-1]+1;
-    aster_sp++;
-    aster_stack[aster_sp-2] = aster_here;
+    for(i1 = aster_rsp-1; aster_rstack[i1 != -1] && i1; i1--);
+    assert(i1);
+    for(i = aster_rsp; i >= i1-1; i--)
+        aster_rstack[i] = aster_rstack[i-1];
+    aster_rsp++;
+    aster_rstack[i1-1]++;
+    aster_rstack[i1-2] = aster_here;
     aster_here += sizeof(int)/sizeof(char);
 }
 
@@ -412,7 +556,7 @@ void aster_w_j()
     aster_stack[aster_sp++] = aster_rstack[aster_rsp-4];
 }
 
-void aster_getNext(char *s1)
+void aster_getNextLower(char *s1)
 {
     char c;
     char *s;
@@ -422,17 +566,20 @@ void aster_getNext(char *s1)
     *(s++) = c;
     while((c = aster_nextChar()) > ' ') *(s++) = c;
     *s = 0;
-    for(s = s1; *s; s++)
+}
+
+void aster_getNext(char *s)
+{
+    aster_getNextLower(s);
+    for(; *s; s++)
         if(*s >= 'a' && *s <= 'z') *s += 'A'-'a';
 }
 
 void aster_w_col()
 {
     assert(aster_status == ASTER_RUN);
-    *(void (**)(void))(aster_dict+aster_here) = 0;
-    aster_pc = aster_old;
-    aster_run();
     aster_here = aster_old;
+    *(void (**)(void))(aster_dict+aster_here) = 0;
     aster_status = ASTER_WORD;
     aster_getNext(aster_nextName);
 }
@@ -446,13 +593,50 @@ void aster_w_semi()
     aster_words[aster_nwords++] = (struct aster_word)
     {
         aster_nextName,
-        0, aster_old,
+        0, aster_old, aster_here-aster_old,
         0,
     };
     aster_nextName += strlen(aster_nextName)+1;
     aster_status = ASTER_RUN;
-    aster_print(aster_old, aster_here);
     aster_old = aster_here;
+}
+
+void aster_w_see()
+{
+    struct aster_word *w;
+    aster_getNext(aster_nextName);
+    w = aster_findWord(aster_nextName);
+    assert(w);
+    if(w->flag & ASTER_IMMEDIATE)
+        printf("%s (IMMEDIATE)\n", aster_nextName);
+    else
+        printf("%s\n", aster_nextName);
+    if(w->flag & ASTER_C)
+        printf("function: 0x%x\n", (unsigned)(long long)w->fun);
+    else
+        aster_print(w->addr, w->addr+w->size);
+}
+
+void aster_w_forget()
+{
+    struct aster_word *w;
+    int wi, i;
+    aster_getNext(aster_nextName);
+    w = aster_findWord(aster_nextName);
+    assert(w);
+    wi = w-aster_words;
+    aster_nwords--;
+    for(i = wi; i < aster_nwords; i++)
+        aster_words[i] = aster_words[i+1];
+}
+
+void aster_w_include()
+{
+    assert(aster_status == ASTER_RUN);
+    aster_here = aster_old;
+    *(void (**)(void))(aster_dict+aster_here) = 0;
+    aster_getNextLower(aster_nextName);
+    aster_runFile(aster_nextName);
 }
 
 void aster_init()
@@ -484,11 +668,31 @@ void aster_init()
     aster_addC(aster_w_dec, "1-", 0);
     aster_addC(aster_w_shr, "2/", 0);
     aster_addC(aster_w_shl, "2*", 0);
+    aster_addC(aster_w_and, "AND", 0);
+    aster_addC(aster_w_or, "OR", 0);
+    aster_addC(aster_w_xor, "XOR", 0);
+    aster_addC(aster_w_invert, "INVERT", 0);
+    aster_addC(aster_w_equ, "=", 0);
+    aster_addC(aster_w_gre, ">", 0);
+    aster_addC(aster_w_les, "<", 0);
+    aster_addC(aster_w_greequ, ">=", 0);
+    aster_addC(aster_w_lesequ, "<=", 0);
+    aster_addC(aster_w_neq, "<>", 0);
+    aster_addC(aster_w_zequ, "0=", 0);
+    aster_addC(aster_w_zgre, "0>", 0);
+    aster_addC(aster_w_zles, "0<", 0);
+    aster_addC(aster_w_zgreequ, "0>=", 0);
+    aster_addC(aster_w_zlesequ, "0<=", 0);
+    aster_addC(aster_w_zneq, "0<>", 0);
     aster_addC(aster_w_prnum, ".", 0);
-    aster_addC(aster_w_prstack, ".S", 0);
     aster_addC(aster_w_space, "SPACE", 0);
     aster_addC(aster_w_cr, "CR", 0);
     aster_addC(aster_w_words, "WORDS", 0);
+    aster_addC(aster_w_prstack, ".S", 0);
+    aster_addC(aster_w_bye, "BYE", 0);
+    aster_addC(aster_w_backslash, "\\", ASTER_IMMEDIATE);
+    aster_addC(aster_w_lbrace, "(", ASTER_IMMEDIATE);
+    aster_addC(aster_w_immediate, "IMMEDIATE", 0);
     aster_addC(aster_w_if, "IF", ASTER_IMMEDIATE);
     aster_addC(aster_w_then, "THEN", ASTER_IMMEDIATE);
     aster_addC(aster_w_else, "ELSE", ASTER_IMMEDIATE);
@@ -499,6 +703,9 @@ void aster_init()
     aster_addC(aster_w_leave, "LEAVE", ASTER_IMMEDIATE);
     aster_addC(aster_w_i, "I", 0);
     aster_addC(aster_w_j, "J", 0);
-    aster_addC(aster_w_col, ":", ASTER_IMMEDIATE);
+    aster_addC(aster_w_col, ":", 0);
     aster_addC(aster_w_semi, ";", ASTER_IMMEDIATE);
+    aster_addC(aster_w_see,  "SEE", ASTER_IMMEDIATE);
+    aster_addC(aster_w_forget, "FORGET", ASTER_IMMEDIATE);
+    aster_addC(aster_w_include, "INCLUDE", 0);
 }

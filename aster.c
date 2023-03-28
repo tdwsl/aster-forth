@@ -22,7 +22,7 @@ void aster_addC(void (*fun)(void), const char *name, int flag)
     aster_words[aster_nwords++] = (struct aster_word)
     {
         name,
-        flag|ASTER_C, 0,
+        flag|ASTER_C, 0, 0,
         fun,
     };
 }
@@ -153,8 +153,8 @@ void aster_runAll()
                 aster_doToken(buf);
                 s = buf;
             }
-            if((c == 0 || c == '\n') && aster_status != ASTER_WORD
-                    && aster_old != aster_here) {
+            if(/*(c == 0 || c == '\n') &&*/ aster_status != ASTER_WORD
+                    && aster_old != aster_here && !aster_rsp) {
                 *(void (**)(void))(aster_dict+aster_here) = 0;
                 aster_pc = aster_old;
                 aster_run();
@@ -205,5 +205,24 @@ void aster_runFile(const char *filename)
     aster_runAll();
     aster_fp = old_fp;
     aster_nextChar = old_nextChar;
+}
+
+void aster_runPrompt()
+{
+    char buf[512];
+    char *s;
+    char c;
+    for(;;)
+    {
+        if(aster_old == aster_here) printf("  ok\n");
+        else printf("  compiled\n");
+        s = buf;
+        do {
+            c = fgetc(stdin);
+            *(s++) = c;
+        } while(c >= ' ' || c == '\t');
+        *(s-1) = 0;
+        aster_runString(buf);
+    }
 }
 
