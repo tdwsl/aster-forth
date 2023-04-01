@@ -427,142 +427,6 @@ void aster_w_lbrace()
     while((c = aster_nextChar()) && c != '\n' && c != ')');
 }
 
-void aster_w_if()
-{
-    *(void (**)(void))(aster_dict+aster_here) = aster_jz;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(int*)(aster_dict+aster_here) = 0;
-    aster_rstack[aster_rsp++] = aster_here;
-    aster_here += sizeof(int)/sizeof(char);
-}
-
-void aster_w_then()
-{
-    *(int*)(aster_dict+aster_rstack[--aster_rsp]) = aster_here;
-}
-
-void aster_w_else()
-{
-    *(void (**)(void))(aster_dict+aster_here) = aster_jmp;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(int*)(aster_dict+aster_here) = 0;
-    aster_here += sizeof(int)/sizeof(char);
-    *(int*)(aster_dict+aster_rstack[aster_rsp-1]) = aster_here;
-    aster_rstack[aster_rsp-1] = aster_here-sizeof(int)/sizeof(char);
-}
-
-void aster_do()
-{
-    assert(aster_sp >= 2);
-    aster_rstack[aster_rsp++] = aster_stack[--aster_sp];
-    aster_rstack[aster_rsp++] = aster_stack[--aster_sp];
-}
-
-void aster_w_unloop()
-{
-    assert(aster_rsp >= 2);
-    aster_rsp -= 2;
-}
-
-void aster_w_do()
-{
-    *(void (**)(void))(aster_dict+aster_here) = aster_do;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    aster_rstack[aster_rsp++] = aster_here;
-    aster_rstack[aster_rsp++] = 0;
-    aster_rstack[aster_rsp++] = -1;
-}
-
-void aster_loop()
-{
-    aster_rstack[aster_rsp-2]++;
-    aster_stack[aster_sp++] =
-        (aster_rstack[aster_rsp-2] == aster_rstack[aster_rsp-1]);
-}
-
-void aster_plusloop()
-{
-    int o;
-    assert(aster_sp);
-    o = aster_rstack[aster_rsp-2];
-    aster_rstack[aster_rsp-2] += aster_stack[--aster_sp];
-    aster_stack[aster_sp++] =
-        ((aster_rstack[aster_rsp-2] >= aster_rstack[aster_rsp-1]) !=
-        (o >= aster_rstack[aster_rsp-1]));
-}
-
-void aster_w_loop()
-{
-    int i;
-    assert(aster_rsp >= 3);
-    /*for(i = 0; i < aster_rsp; i++) printf("%d ", aster_rstack[i]);
-    printf("\n");*/
-    aster_rsp--;
-    *(void (**)(void))(aster_dict+aster_here) = aster_loop;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(void (**)(void))(aster_dict+aster_here) = aster_jz;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(int*)(aster_dict+aster_here) =
-        aster_rstack[aster_rsp-2-aster_rstack[aster_rsp-1]];
-    aster_here += sizeof(int)/sizeof(char);
-    for(i = 0; i < aster_rstack[aster_rsp-1]; i++)
-        *(int*)(aster_dict+
-            aster_rstack[aster_rsp-2-i]) =
-                aster_here;
-    aster_rsp -= aster_rstack[aster_rsp-1]+2;
-    *(void (**)(void))(aster_dict+aster_here) = aster_w_unloop;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-}
-
-void aster_w_plusloop()
-{
-    int i;
-    assert(aster_rsp >= 3);
-    aster_rsp--;
-    *(void (**)(void))(aster_dict+aster_here) = aster_plusloop;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(void (**)(void))(aster_dict+aster_here) = aster_jz;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(int*)(aster_dict+aster_here) =
-        aster_rstack[aster_rsp-2-aster_rstack[aster_rsp-1]];
-    aster_here += sizeof(int)/sizeof(char);
-    for(i = 0; i < aster_rstack[aster_rsp-1]; i++)
-        *(int*)(aster_dict+
-            aster_rstack[aster_rsp-2-i]) =
-                aster_here;
-    aster_rsp -= aster_rstack[aster_rsp-1]+2;
-    *(void (**)(void))(aster_dict+aster_here) = aster_w_unloop;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-}
-
-void aster_w_leave()
-{
-    int i1, i;
-    assert(aster_rsp >= 3);
-    *(void (**)(void))(aster_dict+aster_here) = aster_jmp;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    for(i1 = aster_rsp-1; aster_rstack[i1 != -1] && i1; i1--);
-    assert(i1);
-    for(i = aster_rsp; i >= i1-1; i--)
-        aster_rstack[i] = aster_rstack[i-1];
-    aster_rsp++;
-    aster_rstack[i1-1]++;
-    aster_rstack[i1-2] = aster_here;
-    aster_here += sizeof(int)/sizeof(char);
-}
-
-void aster_w_i()
-{
-    assert(aster_rsp >= 2);
-    aster_stack[aster_sp++] = aster_rstack[aster_rsp-2];
-}
-
-void aster_w_j()
-{
-    assert(aster_rsp >= 4);
-    aster_stack[aster_sp++] = aster_rstack[aster_rsp-4];
-}
-
 void aster_getNextLower(char *s1)
 {
     char c;
@@ -585,14 +449,13 @@ void aster_getNext(char *s)
 void aster_w_col()
 {
     assert(aster_status == ASTER_RUN);
-    aster_here = aster_old;
     *(void (**)(void))(aster_dict+aster_here) = 0;
     aster_status = ASTER_WORD;
     aster_getNext(aster_nextName);
     aster_words[aster_nwords++] = (struct aster_word)
     {
         aster_nextName,
-        0, aster_old, 0,
+        0, aster_here, 0,
         0,
     };
     aster_nextName += strlen(aster_nextName)+1;
@@ -604,9 +467,14 @@ void aster_w_semi()
     assert(aster_rsp == 0);
     *(void (**)(void))(aster_dict+aster_here) = aster_ret;
     aster_here += sizeof(void (**)(void))/sizeof(char);
-    aster_words[aster_nwords-1].size = aster_here-aster_old;
+    aster_words[aster_nwords-1].size =
+        aster_here-aster_words[aster_nwords-1].addr;
     aster_status = ASTER_RUN;
-    aster_old = aster_here;
+}
+
+void aster_assertW(struct aster_word *w, char *name)
+{
+    if(!w) { printf("%s ?\n", aster_nextName); exit(1); }
 }
 
 void aster_w_see()
@@ -614,8 +482,10 @@ void aster_w_see()
     struct aster_word *w;
     aster_getNext(aster_nextName);
     w = aster_findWord(aster_nextName);
-    assert(w);
-    if(w->flag & ASTER_IMMEDIATE)
+    aster_assertW(w, aster_nextName);
+    if(w->flag & ASTER_COMPILEONLY)
+        printf("%s (COMPILE-ONLY)\n", aster_nextName);
+    else if(w->flag & ASTER_IMMEDIATE)
         printf("%s (IMMEDIATE)\n", aster_nextName);
     else
         printf("%s\n", aster_nextName);
@@ -631,7 +501,7 @@ void aster_w_forget()
     int wi, i;
     aster_getNext(aster_nextName);
     w = aster_findWord(aster_nextName);
-    assert(w);
+    aster_assertW(w, aster_nextName);
     wi = w-aster_words;
     aster_nwords--;
     for(i = wi; i < aster_nwords; i++)
@@ -641,7 +511,6 @@ void aster_w_forget()
 void aster_w_include()
 {
     assert(aster_status == ASTER_RUN);
-    aster_here = aster_old;
     *(void (**)(void))(aster_dict+aster_here) = 0;
     aster_getNextLower(aster_nextName);
     aster_runFile(aster_nextName);
@@ -676,21 +545,18 @@ void aster_w_getc()
 
 void aster_w_here()
 {
-    aster_stack[aster_sp++] = aster_old;
+    aster_stack[aster_sp++] = aster_here;
 }
 
 void aster_w_allot()
 {
     assert(aster_sp);
-    aster_here = aster_old;
     aster_here += aster_stack[--aster_sp];
-    aster_old = aster_here;
 }
 
 void aster_w_constant()
 {
     assert(aster_sp);
-    aster_here = aster_old;
     aster_getNext(aster_nextName);
     aster_words[aster_nwords++] = (struct aster_word)
     {
@@ -707,14 +573,10 @@ void aster_w_constant()
     *(void (**)(void))(aster_dict+aster_here) = aster_ret;
     aster_here += sizeof(void (*)(void))/sizeof(char);
     *(void (**)(void))(aster_dict+aster_here) = 0;
-    if(aster_pc >= aster_old)
-        aster_pc = aster_here;
-    aster_old = aster_here;
 }
 
 void aster_w_create()
 {
-    aster_here = aster_old;
     aster_stack[aster_sp++] = aster_here+
         (sizeof(void (*)(void))/sizeof(char))*2 + sizeof(int)/sizeof(char);
     aster_w_constant();
@@ -724,32 +586,6 @@ void aster_w_variable()
 {
     aster_w_create();
     aster_here += sizeof(int)/sizeof(char);
-    aster_old = aster_here;
-}
-
-void aster_w_squote()
-{
-    int i;
-    i = aster_stringPtr;
-    do {
-        aster_dict[i++] = aster_nextChar();
-    } while(aster_dict[i-1] && aster_dict[i-1] != '"'
-        && aster_dict[i-1] != '\n');
-    aster_stack[aster_sp++] = aster_stringPtr;
-    aster_stack[aster_sp++] = i-aster_stringPtr-1;
-    aster_stringPtr = i;
-}
-
-void aster_w_quote()
-{
-    int i;
-    i = aster_stringPtr;
-    do {
-        aster_dict[i++] = aster_nextChar();
-    } while(aster_dict[i-1] && aster_dict[i-1] != '"'
-        && aster_dict[i-1] != '\n');
-    aster_dict[i-1] = 0;
-    printf("%s", aster_dict+aster_stringPtr);
 }
 
 void aster_w_parse()
@@ -818,6 +654,7 @@ void aster_w_execute()
 void aster_compile()
 {
     assert(aster_sp);
+    assert(aster_status == ASTER_WORD);
     if(aster_stack[--aster_sp] < 0) {
         *(void (**)(void))(aster_dict+aster_here) =
             aster_words[(aster_stack[aster_sp]+1)*-1].fun;
@@ -826,16 +663,17 @@ void aster_compile()
         *(void (**)(void))(aster_dict+aster_here) = aster_call;
         aster_here += sizeof(void (*)(void))/sizeof(char);
         *(int*)(aster_dict+aster_here) = aster_stack[aster_sp];
-        aster_here += sizeof(int);
+        aster_here += sizeof(int)/sizeof(char);
     }
 }
 
 void aster_w_postpone()
 {
     struct aster_word *w;
+    assert(aster_status == ASTER_WORD);
     aster_getNext(aster_nextName);
     w = aster_findWord(aster_nextName);
-    assert(w);
+    aster_assertW(w, aster_nextName);
     if(w->flag & ASTER_IMMEDIATE) {
         if(w->flag & ASTER_C) {
             *(void (**)(void))(aster_dict+aster_here) = w->fun;
@@ -865,12 +703,47 @@ void aster_w_qcompile()
     aster_stack[aster_sp++] = (aster_status == ASTER_WORD)*-1;
 }
 
+void aster_w_base()
+{
+    aster_stack[aster_sp++] = ASTER_BASE;
+}
+
+void aster_w_compileonly()
+{
+    aster_words[aster_nwords-1].flag |= ASTER_COMPILEONLY|ASTER_IMMEDIATE;
+}
+
+void aster_w_jmp()
+{
+    assert(aster_sp);
+    *(void (**)(void))(aster_dict+aster_here) = aster_jmp;
+    aster_here += sizeof(void (*)(void))/sizeof(char);
+    *(int*)(aster_dict+aster_here) = aster_stack[--aster_sp];
+    aster_here += sizeof(int)/sizeof(char);
+}
+
+void aster_w_jz()
+{
+    assert(aster_sp);
+    *(void (**)(void))(aster_dict+aster_here) = aster_jz;
+    aster_here += sizeof(void (*)(void))/sizeof(char);
+    *(int*)(aster_dict+aster_here) = aster_stack[--aster_sp];
+    aster_here += sizeof(int)/sizeof(char);
+}
+
+void aster_w_exit()
+{
+    assert(aster_sp);
+    *(void (**)(void))(aster_dict+aster_here) = aster_ret;
+    aster_here += sizeof(void (*)(void))/sizeof(char);
+}
+
 void aster_init()
 {
     aster_here = ASTER_DICTSTART;
-    aster_old = ASTER_DICTSTART;
     aster_stringPtr = ASTER_STRINGSTART;
     *(int*)(aster_dict+ASTER_BASE) = 10;
+    *(void (**)(void))(aster_dict+ASTER_RET) = 0;
     aster_addC(aster_w_rph, ">R", 0);
     aster_addC(aster_w_rpl, "R>", 0);
     aster_addC(aster_w_dup, "DUP", 0);
@@ -925,16 +798,6 @@ void aster_init()
     aster_addC(aster_w_backslash, "\\", ASTER_IMMEDIATE);
     aster_addC(aster_w_lbrace, "(", ASTER_IMMEDIATE);
     aster_addC(aster_w_immediate, "IMMEDIATE", 0);
-    aster_addC(aster_w_if, "IF", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_then, "THEN", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_else, "ELSE", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_do, "DO", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_loop, "LOOP", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_plusloop, "+LOOP", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_unloop, "UNLOOP", 0);
-    aster_addC(aster_w_leave, "LEAVE", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
-    aster_addC(aster_w_i, "I", 0);
-    aster_addC(aster_w_j, "J", 0);
     aster_addC(aster_w_col, ":", 0);
     aster_addC(aster_w_semi, ";", ASTER_IMMEDIATE);
     aster_addC(aster_w_see,  "SEE", 0);
@@ -949,8 +812,6 @@ void aster_init()
     aster_addC(aster_w_constant, "CONSTANT", 0);
     aster_addC(aster_w_create, "CREATE", 0);
     aster_addC(aster_w_variable, "VARIABLE", 0);
-    aster_addC(aster_w_squote, "S\"", ASTER_IMMEDIATE);
-    aster_addC(aster_w_quote, ".\"", ASTER_IMMEDIATE);
     aster_addC(aster_w_parse, "PARSE", 0);
     aster_addC(aster_w_savestring, "SAVE-STRING", 0);
     aster_addC(aster_w_char, "CHAR", 0);
@@ -962,5 +823,10 @@ void aster_init()
     aster_addC(aster_w_postpone, "POSTPONE",
         ASTER_IMMEDIATE|ASTER_COMPILEONLY);
     aster_addC(aster_w_qcompile, "COMPILE?", 0);
+    aster_addC(aster_w_base, "BASE", 0);
+    aster_addC(aster_w_compileonly, "COMPILE-ONLY", 0);
+    aster_addC(aster_w_jmp, "JMP,", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
+    aster_addC(aster_w_jz, "JZ,", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
+    aster_addC(aster_w_exit, "EXIT", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_runString((char*)aster_bootstr);
 }

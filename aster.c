@@ -1,5 +1,4 @@
 #include "aster.h"
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +7,7 @@ char aster_dict[ASTER_DICTSZ];
 int aster_stack[ASTER_STACKSZ];
 int aster_rstack[ASTER_RSTACKSZ];
 int aster_sp=0, aster_rsp=0, aster_pc=0;
-int aster_here=ASTER_DICTSTART, aster_old=ASTER_DICTSTART;
+int aster_here=ASTER_DICTSTART;
 int aster_stringPtr=ASTER_STRINGSTART;
 struct aster_word aster_words[ASTER_WORDSSZ];
 int aster_nwords=0;
@@ -52,8 +51,9 @@ void aster_run()
     void (*fun)(void);
     while(fun = *(void (**)(void))(aster_dict+aster_pc))
     {
-        /*printf(":%X\n", aster_pc);*/
-        aster_pc += sizeof(void (*)(void));
+        /*aster_w_prstack();
+        aster_print(aster_pc, aster_pc+sizeof(void (*)(void))/sizeof(char));*/
+        aster_pc += sizeof(void (*)(void))/sizeof(char);;
         fun();
     }
 }
@@ -91,11 +91,13 @@ void aster_doToken(char *s)
     w = aster_findWord(s);
     if(aster_status != ASTER_WORD) {
         if(w) {
-            assert(!(w->flag & ASTER_COMPILEONLY));
+            if(w->flag & ASTER_COMPILEONLY) {
+                printf("%s is compile-only\n", s);
+                exit(1);
+            }
             if(w->flag & ASTER_C) w->fun();
             else {
-                aster_rstack[aster_rsp++] = aster_here;
-                *(void (**)(void))(aster_dict+aster_here) = 0;
+                aster_rstack[aster_rsp++] = ASTER_RET;
                 aster_pc = w->addr;
                 aster_run();
             }
@@ -106,8 +108,7 @@ void aster_doToken(char *s)
         if(w->flag & ASTER_IMMEDIATE) {
             if(w->flag & ASTER_C) w->fun();
             else {
-                aster_rstack[aster_rsp++] = aster_here;
-                *(void (**)(void))(aster_dict+aster_here) = 0;
+                aster_rstack[aster_rsp++] = ASTER_RET;
                 aster_pc = w->addr;
                 aster_run();
             }
@@ -173,13 +174,6 @@ void aster_runAll()
                 aster_doToken(buf);
                 s = buf;
             }
-            if(/*(c == 0 || c == '\n') &&*/ aster_status != ASTER_WORD
-                    && aster_old != aster_here && !aster_rsp) {
-                *(void (**)(void))(aster_dict+aster_here) = 0;
-                aster_pc = aster_old;
-                aster_run();
-                aster_here = aster_old;
-            }
             if(c == 0) return;
         } else {
             if(*s >= 'a' && *s <= 'z') *s += 'A'-'a';
@@ -234,7 +228,7 @@ void aster_runPrompt()
     char c;
     for(;;)
     {
-        if(aster_old == aster_here) printf("  ok\n");
+        if(aster_status != ASTER_WORD) printf("  ok\n");
         else printf("  compiled\n");
         s = buf;
         do {
