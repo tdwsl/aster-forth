@@ -731,6 +731,11 @@ void aster_w_jz()
     aster_here += sizeof(int)/sizeof(char);
 }
 
+void aster_w_user()
+{
+    aster_stack[aster_sp++] = sizeof(void (*)(void))/sizeof(char);
+}
+
 void aster_w_exit()
 {
     assert(aster_sp);
@@ -828,5 +833,6 @@ void aster_init()
     aster_addC(aster_w_jmp, "JMP,", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_w_jz, "JZ,", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_w_exit, "EXIT", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
+    aster_addC(aster_w_user, "USER", 0);
     aster_runString((char*)aster_bootstr);
 }

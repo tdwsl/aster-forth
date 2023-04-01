@@ -8,6 +8,7 @@ const char *aster_bootstr = ""
 ": space 32 emit ; "
 ": cells cell * ; "
 ": cell+ cell + ; "
+": negate invert 1+ ; "
 ": begin r> here >r >r ; compile-only "
 ": until r> r> postpone jz, >r ; compile-only "
 ": while r> r> 0 postpone jz, here cell - >r >r >r ; compile-only "
@@ -42,6 +43,9 @@ const char *aster_bootstr = ""
 "  compile? if dup save-string "
 "  swap postpone literal postpone literal "
 "  postpone type else type then ; immediate "
+": value constant ; "
+": to ' user + "
+"  compile? if postpone literal postpone ! else ! then ; immediate "
 "";
 
 #endif
