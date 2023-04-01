@@ -23,8 +23,9 @@ enum
 
 enum
 {
-    ASTER_RUN,
-    ASTER_WORD,
+    ASTER_RUN = 0,
+    ASTER_WORD = 1,
+    ASTER_INTR = 3,
 };
 
 extern char aster_dict[ASTER_DICTSZ];
@@ -55,6 +56,7 @@ void aster_addC(void (*fun)(void), const char *name, int flag);
 struct aster_word *aster_findWord(const char *name);
 struct aster_word *aster_findC(void (*fun)(void));
 void aster_print(int addr, int addr2);
+void aster_err();
 void aster_run();
 void aster_runAll();
 void aster_runString(char *s);

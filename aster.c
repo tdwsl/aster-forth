@@ -84,6 +84,19 @@ int aster_num(char *s, int *n)
     return 1;
 }
 
+void aster_err()
+{
+    if(aster_status != ASTER_RUN) {
+        aster_here = aster_words[aster_nwords-1].addr;
+        aster_status = ASTER_RUN;
+    }
+    aster_pc = ASTER_RET;
+    aster_rsp = 0;
+    aster_sp = 0;
+    while(aster_nextChar());
+    printf("error\n");
+}
+
 void aster_doToken(char *s)
 {
     struct aster_word *w;
@@ -93,7 +106,8 @@ void aster_doToken(char *s)
         if(w) {
             if(w->flag & ASTER_COMPILEONLY) {
                 printf("%s is compile-only\n", s);
-                exit(1);
+                aster_err();
+                return;
             }
             if(w->flag & ASTER_C) w->fun();
             else {
@@ -103,7 +117,7 @@ void aster_doToken(char *s)
             }
         } else if(aster_num(s, &n))
             aster_stack[aster_sp++] = n;
-        else { printf("%s ?\n", s); exit(1); }
+        else { printf("%s ?\n", s); aster_err(); }
     } else if(w) {
         if(w->flag & ASTER_IMMEDIATE) {
             if(w->flag & ASTER_C) w->fun();
@@ -126,7 +140,7 @@ void aster_doToken(char *s)
         aster_here += sizeof(void (*)(void))/sizeof(char);
         *(int*)(aster_dict+aster_here) = n;
         aster_here += sizeof(int)/sizeof(char);
-    } else { printf("%s ?\n", s); exit(1); }
+    } else { printf("%s ?\n", s); aster_err(); }
 }
 
 void aster_print(int addr, int addr2)
@@ -214,7 +228,11 @@ void aster_runFile(const char *filename)
     old_nextChar = aster_nextChar;
     old_fp = aster_fp;
     aster_fp = fopen(filename, "r");
-    if(!aster_fp) { printf("failed to open %s\n", filename); exit(1); }
+    if(!aster_fp) {
+        printf("failed to open %s\n", filename);
+        aster_err();
+        return;
+    }
     aster_nextChar = aster_nextChar_file;
     aster_runAll();
     aster_fp = old_fp;
