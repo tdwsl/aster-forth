@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 char aster_dict[ASTER_DICTSZ];
 int aster_stack[ASTER_STACKSZ];
@@ -14,9 +15,34 @@ int aster_nwords=0;
 char (*aster_nextChar)(void) = 0;
 char *aster_string;
 FILE *aster_fp;
-int aster_status = ASTER_RUN;
 char aster_nameBuf[ASTER_NAMEBUFSZ];
 char *aster_nextName = aster_nameBuf;
+
+void aster_defEmit(int c)
+{
+    printf("%c", c);
+}
+
+int aster_defKey()
+{
+    return fgetc(stdin);
+}
+
+void (*aster_emit)(int) = aster_defEmit;
+int (*aster_key)(void) = aster_defKey;
+
+int aster_printf(const char *s, ...)
+{
+    int i, r;
+    char buf[400];
+    va_list valist;
+    va_start(valist, s);
+    r = vsprintf(buf, s, valist);
+    va_end(valist);
+    for(i = 0; buf[i]; i++)
+        aster_emit(buf[i]);
+    return r;
+}
 
 void aster_addC(void (*fun)(void), const char *name, int flag)
 {
@@ -86,15 +112,15 @@ int aster_num(char *s, int *n)
 
 void aster_err()
 {
-    if(aster_status != ASTER_RUN) {
+    if(*(int*)(aster_dict+ASTER_STATE) != ASTER_RUN) {
         aster_here = aster_words[aster_nwords-1].addr;
-        aster_status = ASTER_RUN;
+        *(int*)(aster_dict+ASTER_STATE) = ASTER_RUN;
     }
     aster_pc = ASTER_RET;
     aster_rsp = 0;
     aster_sp = 0;
     while(aster_nextChar());
-    printf("error\n");
+    aster_printf("error\n");
 }
 
 void aster_doToken(char *s)
@@ -102,10 +128,10 @@ void aster_doToken(char *s)
     struct aster_word *w;
     int n;
     w = aster_findWord(s);
-    if(aster_status != ASTER_WORD) {
+    if(*(int*)(aster_dict+ASTER_STATE) == ASTER_RUN) {
         if(w) {
             if(w->flag & ASTER_COMPILEONLY) {
-                printf("%s is compile-only\n", s);
+                aster_printf("%s is compile-only\n", s);
                 aster_err();
                 return;
             }
@@ -117,7 +143,7 @@ void aster_doToken(char *s)
             }
         } else if(aster_num(s, &n))
             aster_stack[aster_sp++] = n;
-        else { printf("%s ?\n", s); aster_err(); }
+        else { aster_printf("%s ?\n", s); aster_err(); }
     } else if(w) {
         if(w->flag & ASTER_IMMEDIATE) {
             if(w->flag & ASTER_C) w->fun();
@@ -140,7 +166,7 @@ void aster_doToken(char *s)
         aster_here += sizeof(void (*)(void))/sizeof(char);
         *(int*)(aster_dict+aster_here) = n;
         aster_here += sizeof(int)/sizeof(char);
-    } else { printf("%s ?\n", s); aster_err(); }
+    } else { aster_printf("%s ?\n", s); aster_err(); }
 }
 
 void aster_print(int addr, int addr2)
@@ -150,25 +176,25 @@ void aster_print(int addr, int addr2)
     while(addr < addr2)
     {
         fun = *(void (**)(void))(aster_dict+addr);
-        printf("%.8X ", addr);
+        aster_printf("%.8X ", addr);
         addr += sizeof(void (*)(void));
         if(fun == aster_jmp) {
-            printf("jmp 0x%x", *(int*)(aster_dict+addr));
+            aster_printf("jmp 0x%x", *(int*)(aster_dict+addr));
             addr += sizeof(int)/sizeof(char);
         } else if(fun == aster_jz) {
-            printf("jz 0x%x", *(int*)(aster_dict+addr));
+            aster_printf("jz 0x%x", *(int*)(aster_dict+addr));
             addr += sizeof(int)/sizeof(char);
         } else if(fun == aster_call) {
-            printf("call 0x%x", *(int*)(aster_dict+addr));
+            aster_printf("call 0x%x", *(int*)(aster_dict+addr));
             addr += sizeof(int)/sizeof(char);
         } else if(fun == aster_push) {
-            printf("push %d", *(int*)(aster_dict+addr));
+            aster_printf("push %d", *(int*)(aster_dict+addr));
             addr += sizeof(int)/sizeof(char);
         } else if(fun == aster_ret) {
-            printf("ret");
-        } else if(w = aster_findC(fun)) printf("%s", w->name);
-        else printf("0x%x", (unsigned)(size_t)fun);
-        printf("\n");
+            aster_printf("ret");
+        } else if(w = aster_findC(fun)) aster_printf("%s", w->name);
+        else aster_printf("0x%x", (unsigned)(size_t)fun);
+        aster_printf("\n");
     }
 }
 
@@ -229,7 +255,7 @@ void aster_runFile(const char *filename)
     old_fp = aster_fp;
     aster_fp = fopen(filename, "r");
     if(!aster_fp) {
-        printf("failed to open %s\n", filename);
+        aster_printf("failed to open %s\n", filename);
         aster_err();
         return;
     }
@@ -239,21 +265,36 @@ void aster_runFile(const char *filename)
     aster_nextChar = old_nextChar;
 }
 
+int aster_accept(char *s, int max)
+{
+    int i, c;
+    for(i = 0;;)
+    {
+        c = aster_key();
+        if(c==127||c=='\b') {
+            if(i) { i--; s[i] = 0; aster_printf("\b \b"); }
+            continue;
+        }
+        if(c == '\n'||!c) return i;
+#ifdef ASTER_NCURSES
+        aster_emit(c);
+#endif
+        if(i <= max) s[i++] = c;
+    }
+}
+
 void aster_runPrompt()
 {
     char buf[512];
-    char *s;
-    char c;
     for(;;)
     {
-        if(aster_status != ASTER_WORD) printf("  ok\n");
-        else printf("  compiled\n");
-        s = buf;
-        do {
-            c = fgetc(stdin);
-            *(s++) = c;
-        } while(c >= ' ' || c == '\t');
-        *(s-1) = 0;
+        if(*(int*)(aster_dict+ASTER_STATE) != ASTER_WORD)
+            aster_printf("  ok\n");
+        else aster_printf("  compiled\n");
+        buf[aster_accept(buf, 512-1)] = 0;
+#ifdef ASTER_NCURSES
+        aster_emit(' ');
+#endif
         aster_runString(buf);
     }
 }

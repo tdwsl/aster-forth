@@ -9,7 +9,8 @@
 #define ASTER_WORDSSZ 5999
 #define ASTER_NAMEBUFSZ 4096
 #define ASTER_BASE 0
-#define ASTER_RET (ASTER_BASE+sizeof(int)/sizeof(char))
+#define ASTER_STATE (ASTER_BASE+sizeof(int)/sizeof(char))
+#define ASTER_RET (ASTER_STATE+sizeof(int)/sizeof(char))
 #define ASTER_STRINGSTART (ASTER_RET+sizeof(void (*)(void))/sizeof(char))
 #define ASTER_STRINGSZ 8192
 #define ASTER_DICTSTART (ASTER_STRINGSTART+ASTER_STRINGSZ)
@@ -25,14 +26,13 @@ enum
 {
     ASTER_RUN = 0,
     ASTER_WORD = 1,
-    ASTER_INTR = 3,
 };
 
 extern char aster_dict[ASTER_DICTSZ];
 extern int aster_stack[ASTER_STACKSZ];
 extern int aster_rstack[ASTER_RSTACKSZ];
 extern int aster_sp, aster_rsp, aster_pc, aster_here;
-extern int aster_status, aster_stringPtr;
+extern int aster_stringPtr;
 
 struct aster_word
 {
@@ -50,7 +50,12 @@ extern FILE *aster_fp;
 extern char aster_nameBuf[ASTER_NAMEBUFSZ];
 extern char *aster_nextName;
 
+extern void (*aster_emit)(int);
+extern int (*aster_key)(void);
+
 void aster_init();
+int aster_printf(const char *s, ...);
+int aster_accept(char *s, int max);
 void aster_addCore();
 void aster_addC(void (*fun)(void), const char *name, int flag);
 struct aster_word *aster_findWord(const char *name);
