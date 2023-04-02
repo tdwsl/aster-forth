@@ -20,9 +20,6 @@ void aster_rerr()
     aster_err();
 }
 
-#define aster_sassert(N) if(aster_sp < (N)) { aster_serr(); return; }
-#define aster_rassert(N) if(aster_rsp < (N)) { aster_rerr(); return; }
-
 void aster_jmp()
 {
     aster_pc = *(int*)(aster_dict+aster_pc);
@@ -445,6 +442,7 @@ void aster_w_prstack()
 void aster_w_bye()
 {
 #ifdef ASTER_NCURSES
+    scrollok(stdscr, 0);
     echo();
     endwin();
 #endif

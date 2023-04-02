@@ -7,11 +7,31 @@
 void emit(int c)
 {
     addch(c);
+    refresh();
 }
 
 int key()
 {
     return getch();
+}
+
+void aster_w_page()
+{
+    clear();
+}
+
+void aster_w_atxy()
+{
+    aster_sassert(2);
+    move(aster_stack[aster_sp-1], aster_stack[aster_sp-2]);
+    aster_sp -= 2;
+    refresh();
+}
+
+void aster_w_form()
+{
+    aster_sp += 2;
+    getmaxyx(stdscr, aster_stack[aster_sp-2], aster_stack[aster_sp-1]);
 }
 
 #else
@@ -36,6 +56,10 @@ int main(int argc, char **args)
 #ifdef ASTER_NCURSES
     initscr();
     noecho();
+    scrollok(stdscr, 1);
+    aster_addC(aster_w_atxy, "AT-XY", 0);
+    aster_addC(aster_w_page, "PAGE", 0);
+    aster_addC(aster_w_form, "FORM", 0);
 #endif
     aster_emit = emit;
     aster_key = key;
@@ -46,6 +70,7 @@ int main(int argc, char **args)
     } else
         aster_runPrompt();
 #ifdef ASTER_NCURSES
+    scrollok(stdscr, 0);
     echo();
     endwin();
 #endif
