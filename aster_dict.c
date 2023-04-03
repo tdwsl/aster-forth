@@ -934,7 +934,7 @@ void aster_w_openfile()
         aster_fileSpec[aster_stack[aster_sp-1]]);
     aster_sp -= 3;
     aster_stack[aster_sp++] = i;
-    aster_stack[aster_sp++] = (aster_files[i] != 0);
+    aster_stack[aster_sp++] = (aster_files[i] == 0);
 }
 
 void aster_w_closefile()

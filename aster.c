@@ -21,14 +21,15 @@ int aster_args[ASTER_ARGSSZ];
 
 void aster_initArgs(int argc, char **args)
 {
-    int i;
-    for(i = 0; i < argc; i++)
+    int i, i1;
+    i1 = (argc > 1);
+    for(i = i1; i < argc; i++)
     {
-        aster_args[i] = aster_stringPtr;
+        aster_args[i-i1] = aster_stringPtr;
         strcpy(aster_dict+aster_stringPtr, args[i]);
         aster_stringPtr += strlen(aster_dict+aster_stringPtr)+1;
     }
-    *(int*)(aster_dict+ASTER_ARGC) = argc;
+    *(int*)(aster_dict+ASTER_ARGC) = argc-i1;
 }
 
 void aster_defEmit(int c)

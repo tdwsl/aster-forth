@@ -6,8 +6,11 @@
 
 void emit(int c)
 {
-    addch(c);
-    refresh();
+    if((c&0xff) == c)
+        if(c >= ' ' || c == '\t' || c == '\n' || c == '\b') {
+            addch(c);
+            refresh();
+        }
 }
 
 int key()
