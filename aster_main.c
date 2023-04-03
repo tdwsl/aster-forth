@@ -53,6 +53,7 @@ int key()
 int main(int argc, char **args)
 {
     int i;
+    aster_initArgs(argc, args);
 #ifdef ASTER_NCURSES
     initscr();
     noecho();
@@ -70,6 +71,8 @@ int main(int argc, char **args)
     } else
         aster_runPrompt();
 #ifdef ASTER_NCURSES
+    addstr("press any key");
+    getch();
     scrollok(stdscr, 0);
     echo();
     endwin();

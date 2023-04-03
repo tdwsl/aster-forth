@@ -8,6 +8,8 @@
 #include <ncurses.h>
 #endif
 
+FILE *aster_files[200];
+
 void aster_serr()
 {
     aster_printf("stack underflow\n");
@@ -442,6 +444,8 @@ void aster_w_prstack()
 void aster_w_bye()
 {
 #ifdef ASTER_NCURSES
+    addstr("press any key");
+    getch();
     scrollok(stdscr, 0);
     echo();
     endwin();
@@ -587,42 +591,39 @@ void aster_merr()
     aster_err();
 }
 
-#define aster_massert(M) if(M+sizeof(int)/sizeof(char) >= ASTER_DICTSZ) \
-    aster_merr()
-#define aster_cmassert(M) if(M >= ASTER_DICTSZ) aster_merr()
+#define aster_massert(M) if(M < 0 || \
+    M+sizeof(int)/sizeof(char) >= ASTER_DICTSZ) aster_merr()
+#define aster_cmassert(M) if(M < 0 || M >= ASTER_DICTSZ) aster_merr()
 
 void aster_w_set()
 {
     aster_sassert(2);
-    aster_massert((unsigned)aster_stack[aster_sp-1]);
-    *(int*)(aster_dict+(unsigned)aster_stack[aster_sp-1]) =
-        aster_stack[aster_sp-2];
+    aster_massert(aster_stack[aster_sp-1]);
+    *(int*)(aster_dict+aster_stack[aster_sp-1]) = aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
 void aster_w_get()
 {
     aster_sassert(1);
-    aster_massert((unsigned)aster_stack[aster_sp-1]);
-    aster_stack[aster_sp-1] =
-        *(int*)(aster_dict+(unsigned)aster_stack[aster_sp-1]);
+    aster_massert(aster_stack[aster_sp-1]);
+    aster_stack[aster_sp-1] = *(int*)(aster_dict+aster_stack[aster_sp-1]);
 }
 
 void aster_w_setc()
 {
     aster_sassert(2);
-    aster_cmassert((unsigned)aster_stack[aster_sp-1]);
-    aster_dict[(unsigned)aster_stack[aster_sp-1]] =
-        (unsigned)aster_stack[aster_sp-2];
+    aster_cmassert(aster_stack[aster_sp-1]);
+    aster_dict[aster_stack[aster_sp-1]] = (unsigned)aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
 void aster_w_getc()
 {
     aster_sassert(1);
-    aster_cmassert((unsigned)aster_stack[aster_sp-1]);
+    aster_cmassert(aster_stack[aster_sp-1]);
     aster_stack[aster_sp-1] =
-        (unsigned char)aster_dict[(unsigned)aster_stack[aster_sp-1]];
+        (unsigned char)aster_dict[aster_stack[aster_sp-1]];
 }
 
 void aster_w_here()
@@ -636,26 +637,29 @@ void aster_w_allot()
     aster_here += aster_stack[--aster_sp];
 }
 
+void aster_addConstant(int v, char *s)
+{
+    aster_words[aster_nwords++] = (struct aster_word)
+    {
+        s, 0, aster_here,
+        (sizeof(void (*)(void))*2)/sizeof(char) + sizeof(int)/sizeof(char),
+        0,
+    };
+    *(void (**)(void))(aster_dict+aster_here) = aster_push;
+    aster_here += sizeof(void (*)(void))/sizeof(char);
+    *(int*)(aster_dict+aster_here) = v;
+    aster_here += sizeof(int)/sizeof(char);
+    *(void (**)(void))(aster_dict+aster_here) = aster_ret;
+    aster_here += sizeof(void (*)(void))/sizeof(char);
+}
+
 void aster_w_constant()
 {
     aster_sassert(1);
     aster_getNext(aster_nextName);
     if(!*aster_nextName) return;
-    aster_words[aster_nwords++] = (struct aster_word)
-    {
-        aster_nextName,
-        0, aster_here,
-        (sizeof(void (*)(void))*2)/sizeof(char) + sizeof(int)/sizeof(char),
-        0,
-    };
+    aster_addConstant(aster_stack[--aster_sp], aster_nextName);
     aster_nextName += strlen(aster_nextName)+1;
-    *(void (**)(void))(aster_dict+aster_here) = aster_push;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(int*)(aster_dict+aster_here) = aster_stack[--aster_sp];
-    aster_here += sizeof(int)/sizeof(char);
-    *(void (**)(void))(aster_dict+aster_here) = aster_ret;
-    aster_here += sizeof(void (*)(void))/sizeof(char);
-    *(void (**)(void))(aster_dict+aster_here) = 0;
 }
 
 void aster_w_create()
@@ -908,10 +912,120 @@ void aster_w_accept()
     aster_sp--;
 }
 
+int aster_nextFile()
+{
+    int i;
+    for(i = 0; aster_files[i]; i++);
+    return i;
+}
+
+void aster_w_openfile()
+{
+    int i;
+    const char *aster_fileSpec[] = {
+        "r", "w", "rw", "rb", "wb", "rwb",
+    };
+    aster_sassert(3);
+    strncpy(aster_nextName, aster_dict+aster_stack[aster_sp-3],
+        aster_stack[aster_sp-2]);
+    aster_nextName[aster_stack[aster_sp-2]] = 0;
+    i = aster_nextFile();
+    aster_files[i] = fopen(aster_nextName,
+        aster_fileSpec[aster_stack[aster_sp-1]]);
+    aster_sp -= 3;
+    aster_stack[aster_sp++] = i;
+    aster_stack[aster_sp++] = (aster_files[i] != 0);
+}
+
+void aster_w_closefile()
+{
+    aster_sassert(1);
+    if(aster_files[aster_stack[aster_sp-1]]) {
+        fclose(aster_files[aster_stack[aster_sp-1]]);
+        aster_stack[aster_sp-1] = 0;
+    } else aster_stack[aster_sp-1] = 1;
+}
+
+void aster_w_readfile()
+{
+    aster_sassert(3);
+    if(!aster_files[aster_stack[aster_sp-1]]) {
+        aster_sp -= 3;
+        aster_stack[aster_sp++] = 0;
+        aster_stack[aster_sp++] = -1;
+        return;
+    }
+    aster_stack[aster_sp-3] = fread(aster_dict+aster_stack[aster_sp-3], 1,
+        aster_stack[aster_sp-2], aster_files[aster_stack[aster_sp-1]]);
+    aster_sp--;
+    aster_stack[aster_sp-1] = 0;
+}
+
+void aster_w_readline()
+{
+    int i;
+    aster_sassert(3);
+    if(!aster_files[aster_stack[aster_sp-1]]) {
+        aster_sp -= 3;
+        aster_stack[aster_sp++] = 0;
+        aster_stack[aster_sp++] = -1;
+        return;
+    }
+    for(i = 0; i < aster_stack[aster_sp-2]; i++) {
+        if(!fread(aster_dict+aster_stack[aster_sp-3]+i, 1, 1,
+            aster_files[aster_stack[aster_sp-1]])) break;
+        if(aster_dict[aster_stack[aster_sp-3]+i] == '\n') break;
+    }
+    aster_sp -= 3;
+    aster_stack[aster_sp++] = i;
+    aster_stack[aster_sp++] = 0;
+}
+
+void aster_w_writefile()
+{
+    aster_sassert(3);
+    if(!aster_files[aster_stack[aster_sp-1]]) {
+        aster_sp -= 3;
+        aster_stack[aster_sp++] = 0;
+        aster_stack[aster_sp++] = -1;
+        return;
+    }
+    fwrite(aster_dict+aster_stack[aster_sp-3], 1, aster_stack[aster_sp-2],
+        aster_files[aster_stack[aster_sp-1]]);
+    aster_sp -= 3;
+    aster_stack[aster_sp++] = 0;
+}
+
+void aster_w_writeline()
+{
+    const char c = '\n';
+    aster_w_writefile();
+    if(!aster_stack[aster_sp-1]) {
+        fwrite(&c, 1, 1, aster_files[aster_stack[aster_sp+1]]);
+    }
+}
+
+void aster_w_argc()
+{
+    aster_stack[aster_sp++] = ASTER_ARGC;
+}
+
+void aster_w_arg()
+{
+    aster_sassert(1);
+    if(aster_stack[aster_sp-1] < 0 ||
+            aster_stack[aster_sp-1] >= *(int*)(aster_dict+ASTER_ARGC)) {
+        aster_stack[aster_sp-1] = aster_args[0];
+        aster_stack[aster_sp++] = 0;
+    } else {
+        aster_stack[aster_sp-1] = aster_args[aster_stack[aster_sp-1]];
+        aster_stack[aster_sp] = strlen(aster_dict+aster_stack[aster_sp-1]);
+        aster_sp++;
+    }
+}
+
 void aster_init()
 {
-    aster_here = ASTER_DICTSTART;
-    aster_stringPtr = ASTER_STRINGSTART;
     *(int*)(aster_dict+ASTER_BASE) = 10;
     *(int*)(aster_dict+ASTER_STATE) = ASTER_RUN;
     *(void (**)(void))(aster_dict+ASTER_RET) = 0;
@@ -1010,5 +1124,17 @@ void aster_init()
         ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_w_find, "FIND", 0);
     aster_addC(aster_w_accept, "ACCEPT", 0);
+    aster_addC(aster_w_openfile, "OPEN-FILE", 0);
+    aster_addC(aster_w_openfile, "CREATE-FILE", 0);
+    aster_addC(aster_w_closefile, "CLOSE-FILE", 0);
+    aster_addC(aster_w_readfile, "READ-FILE", 0);
+    aster_addC(aster_w_readline, "READ-LINE", 0);
+    aster_addC(aster_w_writefile, "WRITE-FILE", 0);
+    aster_addC(aster_w_writeline, "WRITE-LINE", 0);
+    aster_addConstant(0, "R/O");
+    aster_addConstant(1, "W/O");
+    aster_addConstant(2, "R/W");
+    aster_addC(aster_w_argc, "ARGC", 0);
+    aster_addC(aster_w_arg, "ARG", 0);
     aster_runString((char*)aster_bootstr);
 }

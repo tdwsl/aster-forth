@@ -17,6 +17,19 @@ char *aster_string;
 FILE *aster_fp;
 char aster_nameBuf[ASTER_NAMEBUFSZ];
 char *aster_nextName = aster_nameBuf;
+int aster_args[ASTER_ARGSSZ];
+
+void aster_initArgs(int argc, char **args)
+{
+    int i;
+    for(i = 0; i < argc; i++)
+    {
+        aster_args[i] = aster_stringPtr;
+        strcpy(aster_dict+aster_stringPtr, args[i]);
+        aster_stringPtr += strlen(aster_dict+aster_stringPtr)+1;
+    }
+    *(int*)(aster_dict+ASTER_ARGC) = argc;
+}
 
 void aster_defEmit(int c)
 {
