@@ -85,6 +85,8 @@ const char *aster_bootstr = ""
 ": str= 2 pick over <> if 2drop 2drop 0 exit then "
 "  drop swap 0 ?do over i + c@ over i + c@ <> if unloop 2drop 0 exit then "
 "  loop 2drop -1 ; "
+": 2! swap over ! cell+ ! ; "
+": 2@ dup cell+ @ swap @ ; "
 "";
 
 #endif
