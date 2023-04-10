@@ -66,6 +66,18 @@ void aster_w_rpl()
     aster_stack[aster_sp++] = aster_rstack[--aster_rsp];
 }
 
+void aster_w_rdrop()
+{
+    aster_rassert(1);
+    aster_rsp--;
+}
+
+void aster_w_rget()
+{
+    aster_rassert(1);
+    aster_stack[aster_sp++] = aster_rstack[aster_rsp-1];
+}
+
 void aster_w_dup()
 {
     aster_sassert(1);
@@ -1031,6 +1043,8 @@ void aster_init()
     *(void (**)(void))(aster_dict+ASTER_RET) = 0;
     aster_addC(aster_w_rph, ">R", 0);
     aster_addC(aster_w_rpl, "R>", 0);
+    aster_addC(aster_w_rdrop, "RDROP", 0);
+    aster_addC(aster_w_rget, "R@", 0);
     aster_addC(aster_w_dup, "DUP", 0);
     aster_addC(aster_w_qdup, "?DUP", 0);
     aster_addC(aster_w_drop, "DROP", 0);
