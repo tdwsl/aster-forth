@@ -30,11 +30,17 @@ enum
     ASTER_WORD = 1,
 };
 
+enum /* run-time flags, set using aster_flags */
+{
+    ASTER_F_ECHO = 1,
+};
+
 extern char aster_dict[ASTER_DICTSZ];
 extern int aster_stack[ASTER_STACKSZ];
 extern int aster_rstack[ASTER_RSTACKSZ];
 extern int aster_sp, aster_rsp, aster_pc, aster_here;
 extern int aster_stringPtr;
+extern int aster_flags;
 
 struct aster_word
 {
@@ -55,6 +61,7 @@ extern int aster_args[ASTER_ARGSSZ];
 
 extern void (*aster_emit)(int);
 extern int (*aster_key)(void);
+extern void (*aster_bye)(void);
 
 void aster_serr();
 void aster_rerr();
@@ -78,6 +85,7 @@ void aster_runAll();
 void aster_runString(char *s);
 void aster_runFile(const char *filename);
 void aster_runPrompt();
+void aster_quit();
 
 void aster_call();
 void aster_ret();

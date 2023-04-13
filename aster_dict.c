@@ -4,10 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ASTER_NCURSES
-#include <ncurses.h>
-#endif
-
 FILE *aster_files[200];
 
 void aster_serr()
@@ -435,6 +431,7 @@ void aster_w_words()
 {
     int i, x;
     x = 0;
+    aster_printf("\n");
     for(i = aster_nwords-1; i >= 0; i--)
     {
         x += strlen(aster_words[i].name)+1;
@@ -455,14 +452,7 @@ void aster_w_prstack()
 
 void aster_w_bye()
 {
-#ifdef ASTER_NCURSES
-    addstr("press any key");
-    getch();
-    scrollok(stdscr, 0);
-    echo();
-    endwin();
-#endif
-    exit(0);
+    aster_bye();
 }
 
 void aster_w_immediate()
@@ -564,11 +554,11 @@ void aster_w_see()
     w = aster_findWord(aster_nextName);
     if(!w) { aster_werr(aster_nextName); return; }
     if(w->flag & ASTER_COMPILEONLY)
-        aster_printf("%s (COMPILE-ONLY)\n", aster_nextName);
+        aster_printf("\n%s (COMPILE-ONLY)\n", aster_nextName);
     else if(w->flag & ASTER_IMMEDIATE)
-        aster_printf("%s (IMMEDIATE)\n", aster_nextName);
+        aster_printf("\n%s (IMMEDIATE)\n", aster_nextName);
     else
-        aster_printf("%s\n", aster_nextName);
+        aster_printf("\n%s\n", aster_nextName);
     if(w->flag & ASTER_C)
         aster_printf("function: 0x%x\n", (unsigned)(long long)w->fun);
     else

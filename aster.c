@@ -18,6 +18,7 @@ FILE *aster_fp;
 char aster_nameBuf[ASTER_NAMEBUFSZ];
 char *aster_nextName = aster_nameBuf;
 int aster_args[ASTER_ARGSSZ];
+int aster_flags = 0;
 
 void aster_initArgs(int argc, char **args)
 {
@@ -42,8 +43,14 @@ int aster_defKey()
     return fgetc(stdin);
 }
 
+void aster_defBye()
+{
+    exit(0);
+}
+
 void (*aster_emit)(int) = aster_defEmit;
 int (*aster_key)(void) = aster_defKey;
+void (*aster_bye)(void) = aster_defBye;
 
 int aster_printf(const char *s, ...)
 {
@@ -286,13 +293,16 @@ int aster_accept(char *s, int max)
     {
         c = aster_key();
         if(c==127||c=='\b') {
-            if(i) { i--; s[i] = 0; aster_printf("\b \b"); }
+            if(i) { i--; aster_printf("\b \b"); }
+            s[i] = 0;
             continue;
         }
         if(c == '\n'||!c) return i;
-#ifdef ASTER_NCURSES
-        aster_emit(c);
-#endif
+        if(aster_flags & ASTER_F_ECHO) { /* ncurses/conio */
+            if(c == '\t') continue;
+            if((c & 0xffffff00) || c < ' ') continue;
+            aster_emit(c);
+        }
         if(i <= max) s[i++] = c;
     }
 }
@@ -306,9 +316,8 @@ void aster_runPrompt()
             aster_printf("  ok\n");
         else aster_printf("  compiled\n");
         buf[aster_accept(buf, 512-1)] = 0;
-#ifdef ASTER_NCURSES
-        aster_emit(' ');
-#endif
+        if(aster_flags & ASTER_F_ECHO)
+            aster_emit(' ');
         aster_runString(buf);
     }
 }
