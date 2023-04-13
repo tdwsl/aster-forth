@@ -310,6 +310,7 @@ int aster_accept(char *s, int max)
 void aster_runPrompt()
 {
     char buf[512];
+    aster_printf("Aster FORTH - tdwsl 2023. Type bye to exit.\n");
     for(;;)
     {
         if(*(int*)(aster_dict+ASTER_STATE) != ASTER_WORD)
