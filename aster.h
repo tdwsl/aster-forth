@@ -69,6 +69,9 @@ void aster_rerr();
 #define aster_sassert(N) if(aster_sp < (N)) { aster_serr(); return; }
 #define aster_rassert(N) if(aster_rsp < (N)) { aster_rerr(); return; }
 
+#define aster_execute(A) { aster_rstack[aster_rsp++] = ASTER_RET; \
+      aster_pc = A; aster_run(); }
+
 void aster_initArgs(int argc, char **args);
 void aster_init();
 int aster_printf(const char *s, ...);
