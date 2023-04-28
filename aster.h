@@ -3,10 +3,10 @@
 
 #include <stdio.h>
 
-#define ASTER_DICTSZ 4194304
+#define ASTER_DICTSZ 16777216
 #define ASTER_STACKSZ 128
 #define ASTER_RSTACKSZ 128
-#define ASTER_WORDSSZ 5999
+#define ASTER_WORDSSZ 65536
 #define ASTER_NAMEBUFSZ 4096
 #define ASTER_ARGSSZ 60
 #define ASTER_BASE 0
@@ -14,7 +14,7 @@
 #define ASTER_ARGC (ASTER_STATE+sizeof(int)/sizeof(char))
 #define ASTER_RET (ASTER_ARGC+sizeof(int)/sizeof(char))
 #define ASTER_STRINGSTART (ASTER_RET+sizeof(void (*)(void))/sizeof(char))
-#define ASTER_STRINGSZ 8192
+#define ASTER_STRINGSZ 2097152
 #define ASTER_DICTSTART (ASTER_STRINGSTART+ASTER_STRINGSZ)
 
 enum
