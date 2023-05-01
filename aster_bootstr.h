@@ -2,7 +2,7 @@
 #define ASTER_BOOTSTR_H
 
 const char *aster_bootstr = ""
-": ['] ' ; compile-only "
+": ['] ' postpone literal ; compile-only "
 ": [char] char postpone literal ; compile-only "
 ": cr 10 emit ; "
 "32 constant bl "
