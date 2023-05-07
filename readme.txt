@@ -1,6 +1,6 @@
 [ASTER-FORTH]
 
-Aster FORTH is a subroutine-threaded, portable FORTH in C. It can easily be
+Aster FORTH is a direct-threaded, portable FORTH in C. It can easily be
 embedded in C programs and I'm planning on using it as such in future projects.
 It doesn't feature the entirety of the ANS standard, but words that do exist
 should mostly adhere to it. Type WORDS to see what has currently been
