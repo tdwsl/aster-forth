@@ -7,7 +7,6 @@
 
 #define ASTER_INTSZ sizeof(int)/sizeof(char)
 #define ASTER_FUNSZ sizeof(void*)/sizeof(char)
-#define ASTER_DICTSZ 120000
 #define ASTER_BASE 0
 #define ASTER_STATUS ASTER_INTSZ
 #define ASTER_ARGC ASTER_INTSZ*2
@@ -52,6 +51,7 @@ const char *aster_sSU = "stack underflow !\n";
 const char *aster_sSO = "stack overflow !\n";
 const char *aster_sRU = "return stack underflow !\n";
 const char *aster_sRO = "return stack overflow !\n";
+const char *aster_sOB = "invalid memory address\n";
 
 void aster_getNext(char *buf, int max) {
     int i;
@@ -299,23 +299,27 @@ void aster_f_pick() {
 
 void aster_f_sw() {
     aster_sassert(2);
+    aster_bassert(aster_stack[aster_sp-1]);
     *(int*)&aster_dict[aster_stack[aster_sp-1]] = aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
 void aster_f_lw() {
     aster_sassert(1);
+    aster_bassert(aster_stack[aster_sp-1]);
     aster_stack[aster_sp-1] = *(int*)&aster_dict[aster_stack[aster_sp-1]];
 }
 
 void aster_f_sb() {
     aster_sassert(2);
+    aster_bassert(aster_stack[aster_sp-1]);
     aster_dict[aster_stack[aster_sp-1]] = aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
 void aster_f_lb() {
     aster_sassert(1);
+    aster_bassert(aster_stack[aster_sp-1]);
     aster_stack[aster_sp-1] = aster_dict[aster_stack[aster_sp-1]];
 }
 
