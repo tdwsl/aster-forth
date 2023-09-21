@@ -5,21 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ASTER_INTSZ sizeof(int)/sizeof(char)
-#define ASTER_FUNSZ sizeof(void*)/sizeof(char)
-#define ASTER_BASE 0
-#define ASTER_STATUS ASTER_INTSZ
-#define ASTER_ARGC ASTER_INTSZ*2
-#define ASTER_START ASTER_INTSZ*3
-#define ASTER_BUFSZ 200
-#define ASTER_MAXWORDS 8192
-#define ASTER_IMMEDIATE 1
-#define ASTER_COMPILEONLY 2
-#define ASTER_FUNCTION 4
-#define ASTER_NAMEBUFSZ 72000
-#define ASTER_LINEBUFSZ 560
-#define ASTER_NFILES 48
-
 struct aster_word {
     char *s;
     char flags;
@@ -185,8 +170,8 @@ void aster_f_mul() {
 }
 
 void aster_f_div() {
-    aster_sassert(2);
     int t;
+    aster_sassert(2);
     t = aster_stack[aster_sp-2] / aster_stack[aster_sp-1];
     aster_stack[aster_sp-2] %= aster_stack[aster_sp-1];
     aster_stack[aster_sp-1] = t;
@@ -484,18 +469,20 @@ void aster_f_cin() {
 void aster_f_colon() {
     *(int*)&aster_dict[ASTER_STATUS] = 1;
     aster_getNext(aster_buf, ASTER_BUFSZ);
-    aster_words[aster_nwords] = (struct aster_word) {
-        aster_nameBufP, 0, aster_here, 0,
-    };
+
+    aster_words[aster_nwords].s     = aster_nameBufP;
+    aster_words[aster_nwords].flags = 0;
+    aster_words[aster_nwords].a     = aster_here;
+
     strcpy(aster_nameBufP, aster_buf);
     aster_nameBufP += strlen(aster_nameBufP)+1;
 }
 
 void aster_f_noname() {
     *(int*)&aster_dict[ASTER_STATUS] = 1;
-    aster_words[aster_nwords] = (struct aster_word) {
-        0, 0, aster_here, 0,
-    };
+    aster_words[aster_nwords].s     = 0;
+    aster_words[aster_nwords].flags = 0;
+    aster_words[aster_nwords].a     = aster_here;
 }
 
 void aster_f_semi() {
@@ -667,15 +654,18 @@ void aster_f_bye() {
 /*** END DICTIONARY ***/
 
 void aster_addC(void (*fun)(void), const char *name, char flags) {
-    aster_words[aster_nwords++] = (struct aster_word) {
-        (char*)name, flags|ASTER_FUNCTION, 0, fun,
-    };
+    aster_words[aster_nwords].s     = (char*)name;
+    aster_words[aster_nwords].flags = flags|ASTER_FUNCTION;
+    aster_words[aster_nwords].a     = 0;
+    aster_words[aster_nwords++].f   = fun;
 }
 
 void aster_addConstant(int v, const char *name) {
-    aster_words[aster_nwords++] = (struct aster_word) {
-        (char*)name, 0, aster_here, 0,
-    };
+    aster_words[aster_nwords].s     = (char*)name;
+    aster_words[aster_nwords].flags = 0;
+    aster_words[aster_nwords].a     = aster_here;
+    aster_words[aster_nwords++].f   = 0;
+
     *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
     aster_here += ASTER_FUNSZ;
     *(int*)&aster_dict[aster_here] = v;
