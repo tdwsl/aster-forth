@@ -1,11 +1,11 @@
-\ generate boot.h
+\ generate aster_boot.h
 
 argc @ 1 = [if]
   ." usage: makeboot.f <file1,file2,...>" cr
   bye
 [then]
 
-s" boot.h" w/o create-file throw constant fd-out
+s" aster_boot.h" w/o create-file throw constant fd-out
 
 s" /* generated with makeboot.f */" fd-out write-line throw
 s" " fd-out write-line

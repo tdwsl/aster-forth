@@ -239,11 +239,11 @@ static char *aster_boot =
 "    2dup i + c@ swap fputc\n"
 "  loop 2drop 0 ;\n"
 "\n"
-"create nl 10 c,\n"
+"here 10 c,\n"
 "\n"
 ": write-line ( a u f -- ior )\n"
 "  dup >r write-file\n"
-"  ?dup 0= if nl 1 r> write-file else r> drop then ;\n"
+"  ?dup 0= if literal 1 r> write-file else r> drop then ;\n"
 "\n"
 ;
 
