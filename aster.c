@@ -773,6 +773,50 @@ void aster_init(int argc, char **args) {
     aster_addConstant(2, "r/w");
 }
 
+int aster_hex(char *s, int *n, char neg) {
+    if(*s == '-') { if(neg) return 0; s++; neg = 1; }
+    if(*s == 0) return 0;
+
+    do {
+        (*n) <<= 4;
+        if(*s >= '0' && *s <= '9') *n |= *s - '0';
+        else if(*s >= 'a' && *s <= 'f') *n |= *s - 'a' + 10;
+        else if(*s >= 'A' && *s <= 'F') *n |= *s - 'A' + 10;
+        else return 0;
+    } while(*(++s));
+
+    if(neg) *n *= -1;
+    return 1;
+}
+
+int aster_bin(char *s, int *n, char neg) {
+    if(*s == '-') { if(neg) return 0; s++; neg = 1; }
+    if(*s == 0) return 0;
+
+    do {
+        *n <<= 1;
+        if(*s == '1') *n |= 1;
+        else if(*s != '0') return 0;
+    } while(*(++s));
+
+    if(neg) *n *= -1;
+    return 1;
+}
+
+int aster_den(char *s, int *n, char neg) {
+    if(*s == '-') { if(neg) return 0; s++; neg = 1; }
+    if(*s == 0) return 0;
+
+    do {
+        *n *= 10;
+        if(*s >= '0' && *s <= '9') *n += *s - '0';
+        else return 0;
+    } while(*(++s));
+
+    if(neg) *n *= -1;
+    return 1;
+}
+
 int aster_number(char *s, int *n) {
     char neg;
     int base;
@@ -780,9 +824,14 @@ int aster_number(char *s, int *n) {
     if(*s == '-') { s++; neg = 1; }
     else neg = 0;
 
-    if(*s == 0) return 0;
-    base = *(int*)&aster_dict[ASTER_BASE];
     *n = 0;
+
+    if(*s == 0) return 0;
+    if(*s == '$') return aster_hex(s+1, n, neg);
+    if(*s == '%') return aster_bin(s+1, n, neg);
+    if(*s == '#') return aster_den(s+1, n, neg);
+
+    base = *(int*)&aster_dict[ASTER_BASE];
 
     if(base <= 10) {
         do {
