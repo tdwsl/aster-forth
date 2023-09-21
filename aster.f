@@ -1,5 +1,5 @@
 
-: [then] ;
+: [then] ; immediate
 
 : begin r> here >r >r ; immediate compile-only
 : again r> r> jmp, >r ; immediate compile-only

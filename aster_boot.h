@@ -5,7 +5,7 @@
 
 static char *aster_boot =
 "\n"
-": [then] ;\n"
+": [then] ; immediate\n"
 "\n"
 ": begin r> here >r >r ; immediate compile-only\n"
 ": again r> r> jmp, >r ; immediate compile-only\n"
