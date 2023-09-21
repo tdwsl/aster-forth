@@ -195,6 +195,16 @@ create nbuf 160 allot
 
 : j r> r> r@ swap >r >r ; compile-only
 
+: key cin begin cin 10 = until ;
+
+: accept ( a u -- u )
+  dup >r 0 ?do
+    cin dup 10 = over -1 = or if
+      2drop i unloop r> drop exit
+    then over i + c!
+  loop
+  drop r> ;
+
 : throw if ." throw" cr -1 error then ;
 
 : bin 3 + ;

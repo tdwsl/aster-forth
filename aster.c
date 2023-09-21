@@ -476,6 +476,11 @@ void aster_f_emit() {
     fputc(aster_stack[--aster_sp], stdout);
 }
 
+void aster_f_cin() {
+    aster_stack[aster_sp++] = fgetc(stdin);
+    aster_soassert(1);
+}
+
 void aster_f_colon() {
     *(int*)&aster_dict[ASTER_STATUS] = 1;
     aster_getNext(aster_buf, ASTER_BUFSZ);
@@ -744,6 +749,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_exit, "exit", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_parsec, "parseC", 0);
     aster_addC(aster_f_emit, "emit", 0);
+    aster_addC(aster_f_cin, "cin", 0);
     aster_addC(aster_f_colon,  ":", 0);
     aster_addC(aster_f_noname, ":NONAME", 0);
     aster_addC(aster_f_semi,   ";", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
@@ -950,7 +956,9 @@ void aster_runStdin() {
             return;
         } else if(*p == '\n' || p-buf >= ASTER_LINEBUFSZ-2) {
             if(p != buf) { *p = 0; aster_runString(buf); }
-            if(!aster_error) printf("  ok\n");
+            if(aster_error);
+            else if(*(int*)&aster_dict[ASTER_STATUS]) printf("  compiled\n");
+            else printf("  ok\n");
             p = buf;
         } else p++;
     }
