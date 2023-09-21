@@ -166,11 +166,11 @@ create nbuf 160 allot
 : unloop r> r> drop >r ; compile-only
 
 : (end-loop) r>
-  r> begin dup while
+  r> begin ?dup while
     here r> cell - !
-  1- repeat drop
+  1- repeat
   postpone unloop
-  r> ?dup if cell - here swap ! >r ;
+  r> ?dup if cell - here swap ! then >r ;
 
 : loop r> r> drop
   postpone r> postpone 1+ postpone dup postpone >r
