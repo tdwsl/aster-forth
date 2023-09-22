@@ -390,8 +390,18 @@ void aster_f_postpone() {
     }
 }
 
+struct aster_word *aster_findWordAddr(int a) {
+    int i;
+
+    for(i = aster_nwords-1; i >= 0; i--)
+        if(!(aster_words[i].flags & ASTER_FUNCTION) && aster_words[i].a == a)
+            return &aster_words[i];
+    return 0;
+}
+
 void aster_f_alias() {
     char buf[ASTER_BUFSZ];
+    struct aster_word *w;
 
     aster_sassert(1);
     aster_getNext(aster_nameBufP,
@@ -405,6 +415,8 @@ void aster_f_alias() {
     } else {
         aster_words[aster_nwords].a = aster_stack[aster_sp];
         aster_words[aster_nwords].flags = 0;
+        if(w = aster_findWordAddr(aster_stack[aster_sp]))
+            aster_words[aster_nwords].end = w->end;
     }
     aster_nwords++;
 }
