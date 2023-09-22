@@ -72,6 +72,9 @@ decimal
   cell - here swap !
 ; immediate compile-only
 
+: ( begin parsec dup 41 = swap 0= or until ; immediate
+: \ begin parsec 0= until ; immediate
+
 : create : 0 postpone literal here postpone ; cell - here swap ! ;
 : constant : postpone literal postpone ; ;
 : variable create cell allot ;
@@ -82,9 +85,6 @@ decimal
 create strbuf 24000 allot
 variable strbufp
 strbuf strbufp !
-
-: ( begin parsec dup 41 = swap 0= or until ; immediate
-: \ begin parsec 0= until ; immediate
 
 : parse-name ( -- a u )
   strbufp @ begin

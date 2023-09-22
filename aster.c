@@ -338,6 +338,7 @@ void aster_f_tick() {
     struct aster_word *w;
 
     w = aster_getNextWord();
+    if(!w) return;
     if(w->flags & ASTER_FUNCTION) aster_stack[aster_sp] = ~(w-aster_words);
     else aster_stack[aster_sp] = w->a;
     aster_sp++;
@@ -365,6 +366,7 @@ void aster_f_postpone() {
     struct aster_word *w;
 
     w = aster_getNextWord();
+    if(!w) return;
     if(w->flags & ASTER_IMMEDIATE) {
         if(w->flags & ASTER_FUNCTION) {
             *(void (**)(void))&aster_dict[aster_here] = w->f;
@@ -569,6 +571,7 @@ void aster_f_see() {
     void (*fun)(void);
 
     w = aster_getNextWord();
+    if(!w) return;
     printf("%s", w->s);
     if(w->flags & ASTER_IMMEDIATE) printf(" (immediate)");
     if(w->flags & ASTER_COMPILEONLY) printf(" (compile-only)");
