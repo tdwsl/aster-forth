@@ -20,6 +20,7 @@
 #define ASTER_ARGC        ASTER_INTSZ*2
 #define ASTER_START       ASTER_INTSZ*3
 
+extern unsigned char aster_dict[];
 extern int aster_stack[];
 extern int aster_rstack[];
 extern unsigned char aster_rsp, aster_sp;
@@ -44,6 +45,7 @@ void aster_init(int argc, char **args);
 void aster_runFile(const char *filename);
 void aster_runString(char *s);
 void aster_runStdin();
+void aster_runAddr(int pc);
 void aster_addConstant(int v, const char *name);
 void aster_addC(void (*fun)(void), const char *name, char flags);
 
