@@ -77,7 +77,7 @@ decimal
 : variable create cell allot ;
 
 ' constant alias value
-: to ' funsz + compile? if postpone literal postpone ! else ! then ; immediate
+: to ' funsz + postpone literal postpone ! ; immediate
 
 create strbuf 24000 allot
 variable strbufp
@@ -107,14 +107,18 @@ strbuf strbufp !
 : char parse-name drop c@ ;
 : [char] char postpone literal ; immediate compile-only
 
-: 2literal swap postpone literal postpone literal ; immediate compile-only
+: 2literal compile? if swap then
+  postpone literal postpone literal ; immediate compile-only
 
 : ." [char] " parse-until
-  compile? if dup save-mem postpone 2literal postpone type
-  else type then ; immediate
+  compile? if dup save-mem then postpone 2literal postpone type ; immediate
 
-: s" [char] " parse-until dup save-mem
-  compile? if postpone 2literal then ; immediate
+: s" [char] " parse-until dup save-mem postpone 2literal ; immediate
+
+: c" 1 strbufp +!
+  [char] " parse-until dup save-mem over 1- c! 1- postpone literal ; immediate
+
+: count dup c@ >r 1+ r> ;
 
 : cr 10 emit ;
 : space 32 emit ;
@@ -197,6 +201,16 @@ create nbuf 160 allot
 ' r@ alias i compile-only
 
 : j r> r> r@ swap >r >r ; compile-only
+
+: fill ( a u c -- )
+  >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;
+
+: move ( a a u -- )
+  >r begin r@ while over c@ over c! r> 1- >r
+  1+ >r 1+ r> repeat r> drop 2drop ;
+
+: erase ( a u -- )
+  >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
 
 : key cin begin cin 10 = until ;
 

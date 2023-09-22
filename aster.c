@@ -345,18 +345,20 @@ void aster_f_tick() {
 }
 
 void aster_f_compile() {
-    aster_sassert(1);
-    aster_sp--;
-    if(aster_stack[aster_sp] < 0) {
-        *(void (**)(void))&aster_dict[aster_here] =
-          aster_words[~aster_stack[aster_sp]].f;
-        aster_here += ASTER_FUNSZ;
-    } else {
-        *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
-        aster_here += ASTER_FUNSZ;
-        *(int*)&aster_dict[aster_here] = aster_stack[aster_sp];
-        aster_here += ASTER_INTSZ;
-    }
+    if(*(int*)&aster_dict[ASTER_STATUS]) {
+        aster_sassert(1);
+        aster_sp--;
+        if(aster_stack[aster_sp] < 0) {
+            *(void (**)(void))&aster_dict[aster_here] =
+              aster_words[~aster_stack[aster_sp]].f;
+            aster_here += ASTER_FUNSZ;
+        } else {
+            *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
+            aster_here += ASTER_FUNSZ;
+            *(int*)&aster_dict[aster_here] = aster_stack[aster_sp];
+            aster_here += ASTER_INTSZ;
+        }
+    } else aster_f_execute();
 }
 
 void aster_f_postpone() {
@@ -407,10 +409,12 @@ void aster_f_alias() {
 
 void aster_f_literal() {
     aster_sassert(1);
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
-    aster_here += ASTER_FUNSZ;
-    *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
-    aster_here += ASTER_INTSZ;
+    if(*(int*)&aster_dict[ASTER_STATUS]) {
+        *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
+        aster_here += ASTER_FUNSZ;
+        *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
+        aster_here += ASTER_INTSZ;
+    }
 }
 
 void aster_f_jmpc() {
@@ -443,6 +447,13 @@ void aster_f_lits() {
     *(int*)&aster_dict[aster_stack[aster_sp-1]+ASTER_FUNSZ] =
       aster_stack[aster_sp-2];
     aster_sp -= 2;
+}
+
+void aster_f_recurse() {
+    *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
+    aster_here += ASTER_FUNSZ;
+    *(int*)&aster_dict[aster_here] = aster_words[aster_nwords].a;
+    aster_here += ASTER_INTSZ;
 }
 
 void aster_f_exit() {
@@ -736,6 +747,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_jzc,  "jz,",  ASTER_COMPILEONLY);
     aster_addC(aster_f_jmps, "jmp!", 0);
     aster_addC(aster_f_lits, "lit!", 0);
+    aster_addC(aster_f_recurse, "recurse", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_exit, "exit", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_parsec, "parseC", 0);
     aster_addC(aster_f_emit, "emit", 0);
