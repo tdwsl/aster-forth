@@ -76,6 +76,9 @@ decimal
 : constant : postpone literal postpone ; ;
 : variable create cell allot ;
 
+' constant alias value
+: to ' funsz + compile? if postpone literal postpone ! else ! then ; immediate
+
 create strbuf 24000 allot
 variable strbufp
 strbuf strbufp !
