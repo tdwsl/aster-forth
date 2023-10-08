@@ -155,6 +155,8 @@ create nbuf 160 allot
   depth begin dup while dup >r 1- pick . r> 1- repeat drop
   cr ;
 
+: ? @ . ;
+
 : strlen ( a -- a u )
   dup begin dup c@ while 1+ repeat over - ;
 

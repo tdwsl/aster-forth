@@ -16,7 +16,8 @@ struct aster_word {
 unsigned char aster_dict[ASTER_DICTSZ];
 int aster_stack[256];
 int aster_rstack[256];
-unsigned char aster_sp=0, aster_rsp=0;
+int aster_backtrace[256];
+unsigned char aster_sp=0, aster_rsp=0, aster_btsp=0;
 int aster_here = 0;
 int aster_pc;
 char aster_buf[ASTER_BUFSZ];
@@ -31,6 +32,7 @@ FILE *aster_files[ASTER_NFILES];
 int aster_filen = 0;
 unsigned char aster_error = 0;
 unsigned char aster_waitThen = 0;
+unsigned char aster_trace = 0;
 
 const char *aster_sSU = "stack underflow !\n";
 const char *aster_sSO = "stack overflow !\n";
@@ -66,13 +68,23 @@ int aster_streq(char *s1, char *s2) {
     return 1;
 }
 
+void aster_printIns(int addr);
+
+void aster_printAddr(int addr);
+
 void aster_runAddr(int pc) {
     void (*fun)(void);
 
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
 
+    if(aster_trace)
+        aster_printAddr(aster_pc);
+
     do {
+        if(aster_trace)
+            aster_printIns(aster_pc);
+
         fun = *(void (**)(void))&aster_dict[aster_pc];
         aster_pc += ASTER_FUNSZ;
         fun();
@@ -109,10 +121,22 @@ void aster_f_jz() {
 void aster_f_call() {
     aster_rstack[aster_rsp++] = aster_pc + ASTER_INTSZ;
     aster_pc = *(int*)&aster_dict[aster_pc];
+    aster_backtrace[aster_btsp++] = aster_pc;
+
+    if(aster_trace) {
+        printf("call ");
+        aster_printAddr(aster_pc);
+    }
 }
 
 void aster_f_ret() {
     aster_pc = aster_rstack[--aster_rsp];
+    aster_btsp--;
+
+    if(aster_trace) {
+        printf("ret ");
+        aster_printAddr(aster_backtrace[aster_btsp]);
+    }
 }
 
 void aster_f_rph() {
@@ -673,6 +697,11 @@ void aster_f_error() {
     aster_error = aster_stack[--aster_sp];
 }
 
+void aster_f_trace() {
+    aster_sassert(1);
+    aster_trace = aster_stack[--aster_sp] != 0;
+}
+
 void aster_f_bye() {
     exit(0);
 }
@@ -783,6 +812,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_fgetc, "fgetc", 0);
     aster_addC(aster_f_if1, "[if]", 0);
     aster_addC(aster_f_error, "error", 0);
+    aster_addC(aster_f_trace, "trace!", 0);
     aster_addC(aster_f_bye, "bye", 0);
 
     aster_addConstant(ASTER_BASE,   "base");
@@ -936,6 +966,7 @@ void aster_runFile(const char *filename) {
     if(!fp) {
         printf("failed to open %s\n", filename);
         aster_error = 1;
+        return;
     }
 
     p = buf;

@@ -1,11 +1,16 @@
 #include "aster.h"
 #include "aster_boot.h"
 #include <stdio.h>
+#include <string.h>
 
 int main(int argc, char **args) {
     int i;
     char *s;
 
+    if(!strcmp(args[argc-1], "-t")) {
+        argc--;
+        aster_trace = 1;
+    }
     if(argc >= 2) {
         s = args[1];
         argc--;

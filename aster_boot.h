@@ -161,6 +161,8 @@ static char *aster_boot =
 "  depth begin dup while dup >r 1- pick . r> 1- repeat drop\n"
 "  cr ;\n"
 "\n"
+": ? @ . ;\n"
+"\n"
 ": strlen ( a -- a u )\n"
 "  dup begin dup c@ while 1+ repeat over - ;\n"
 "\n"

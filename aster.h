@@ -25,6 +25,7 @@ extern int aster_stack[];
 extern int aster_rstack[];
 extern unsigned char aster_rsp, aster_sp;
 extern unsigned char aster_error;
+extern unsigned char aster_trace;
 
 extern const char *aster_sSU, *aster_sSO, *aster_sRU, *aster_sRO, *aster_sOB;
 
