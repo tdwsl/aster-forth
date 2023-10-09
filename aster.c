@@ -72,11 +72,31 @@ void aster_printIns(int addr);
 
 void aster_printAddr(int addr);
 
+void aster_printStack() {
+    int i;
+    printf("DS: ");
+    for(i = 0; i < aster_sp; i++)
+        printf("%x ", aster_stack[i]);
+    printf("\n");
+}
+
+void aster_printRstack() {
+    int i;
+    printf("RS: ");
+    for(i = 0; i < aster_rsp; i++)
+        printf("%x ", aster_rstack[i]);
+    printf("\n");
+}
+
 void aster_runAddr(int pc) {
     void (*fun)(void);
+    int psp, prsp;
 
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
+
+    prsp = aster_rsp;
+    psp  = aster_sp;
 
     if(aster_trace)
         aster_printAddr(aster_pc);
@@ -88,6 +108,15 @@ void aster_runAddr(int pc) {
         fun = *(void (**)(void))&aster_dict[aster_pc];
         aster_pc += ASTER_FUNSZ;
         fun();
+
+        if(psp != aster_sp && aster_trace) {
+            psp = aster_sp;
+            aster_printStack();
+        }
+        if(prsp != aster_rsp && aster_trace) {
+            prsp = aster_rsp;
+            aster_printRstack();
+        }
     } while((aster_pc != 0) & (!aster_error));
 }
 
@@ -135,7 +164,7 @@ void aster_f_ret() {
 
     if(aster_trace) {
         printf("ret ");
-        aster_printAddr(aster_backtrace[aster_btsp]);
+        aster_printAddr(aster_backtrace[aster_btsp-1]);
     }
 }
 
