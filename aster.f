@@ -35,8 +35,6 @@ decimal
 : / /mod nip ;
 : mod /mod drop ;
 
-: +! dup >r @ + r> ! ;
-
 : 2>r r> -rot swap >r >r >r ;
 : 2r> r> r> r> swap rot >r ;
 

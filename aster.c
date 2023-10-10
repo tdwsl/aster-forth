@@ -348,6 +348,13 @@ void aster_f_lw() {
     aster_stack[aster_sp-1] = *(int*)&aster_dict[aster_stack[aster_sp-1]];
 }
 
+void aster_f_addsw() {
+    aster_sassert(2);
+    aster_bassert(aster_stack[aster_sp-1]);
+    *(int*)&aster_dict[aster_stack[aster_sp-1]] += aster_stack[aster_sp-2];
+    aster_sp -= 2;
+}
+
 void aster_f_sb() {
     aster_sassert(2);
     aster_bassert(aster_stack[aster_sp-1]);
@@ -764,6 +771,7 @@ void aster_init(int argc, char **args) {
 
     aster_sp = 0;
     aster_rsp = 0;
+    aster_btsp = 0;
     aster_here = ASTER_START+argc*ASTER_INTSZ;
     aster_nwords = 0;
     aster_error = 0;
@@ -806,6 +814,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_pick, "pick", 0);
     aster_addC(aster_f_sw, "!", 0);
     aster_addC(aster_f_lw, "@", 0);
+    aster_addC(aster_f_addsw, "+!", 0);
     aster_addC(aster_f_sb, "c!", 0);
     aster_addC(aster_f_lb, "c@", 0);
     aster_addC(aster_f_here, "here", 0);
@@ -1018,6 +1027,7 @@ void aster_runStdin() {
     for(;;) {
         if(aster_error) {
             printf("error\n");
+            aster_btsp = 0;
             aster_sp = 0;
             aster_rsp = 0;
             if(*(int*)&aster_dict[ASTER_STATUS]) {

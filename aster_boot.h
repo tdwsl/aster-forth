@@ -41,8 +41,6 @@ static char *aster_boot =
 ": / /mod nip ;\n"
 ": mod /mod drop ;\n"
 "\n"
-": +! dup >r @ + r> ! ;\n"
-"\n"
 ": 2>r r> -rot swap >r >r >r ;\n"
 ": 2r> r> r> r> swap rot >r ;\n"
 "\n"
