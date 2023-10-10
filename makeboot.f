@@ -82,7 +82,7 @@ quo fd-out write-file throw
 
   begin r@ parse-next ?dup while
     r@ add-word
-  repeat drop cr
+  repeat drop
 
   r> close-file throw ;
 
@@ -92,7 +92,7 @@ quo fd-out write-file throw
   repeat drop
 ; execute
 
-quo fd-out write-line throw
+quo fd-out write-file throw
 s" ;" fd-out write-line throw
 s" " fd-out write-line throw
 s" #endif" fd-out write-line throw

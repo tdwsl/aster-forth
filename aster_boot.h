@@ -79,8 +79,7 @@ static char *aster_boot =
 "unloop r> drop -1 0 exit then over i + c! loop 2drop r> -1 0 ; : write-file "
 "dup valid-file? 0= if 2drop drop -1 exit then -rot 0 ?do 2dup i + c@ swap "
 "fputc loop 2drop 0 ; here 10 c, : write-line dup >r write-file ?dup 0= if "
-"literal 1 r> write-file else r> drop then ; "
-;
+"literal 1 r> write-file else r> drop then ; ";
 
 #endif
 
