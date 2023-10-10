@@ -74,16 +74,7 @@ decimal
   here funsz cell+ 2* + postpone literal postpone (does) ;
 immediate compile-only
 
-\ : does>
-  \ postpone last postpone dup funsz cell+ 2* postpone literal postpone +
-  \ postpone swap postpone lit!
-  \ 0 postpone literal here
-  \ postpone last funsz cell+ postpone literal postpone +
-  \ postpone jmp! postpone exit
-  \ cell - here swap !
-\ ; immediate compile-only
-
-: create : 0 postpone literal here postpone ; cell - here swap ! cell allot ;
+: create : 0 postpone literal here postpone ; cell dup allot - here swap ! ;
 : constant : postpone literal postpone ; ;
 : variable create cell allot ;
 
