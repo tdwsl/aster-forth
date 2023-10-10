@@ -211,6 +211,11 @@ create nbuf 160 allot
 : erase ( a u -- )
   >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
 
+: str= ( a u a u -- )
+  rot over <> if 2drop drop 0 exit then
+  0 ?do over i + c@ over i + c@ <> if 2drop unloop 0 exit then loop
+  2drop -1 ;
+
 : key cin begin cin 10 = until ;
 
 : accept ( a u -- u )

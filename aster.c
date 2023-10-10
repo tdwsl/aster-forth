@@ -1052,19 +1052,7 @@ void aster_runStdin() {
 }
 
 void aster_runString(char *s) {
-    char buf[ASTER_BUFSZ];
-    char *p;
-
-    if(p = strchr(s, '\n')) {
-        strncpy(buf, s, ASTER_BUFSZ);
-        buf[ASTER_BUFSZ-1] = 0;
-        buf[p-s] = 0;
-        aster_string = buf;
-        aster_run();
-        aster_runString(p+1);
-    } else {
-        aster_string = s;
-        aster_run();
-    }
+    aster_string = s;
+    aster_run();
 }
 
