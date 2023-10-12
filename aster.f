@@ -98,6 +98,14 @@ strbuf strbufp !
   r> dup r@ = swap 0= or until
   r> drop 1- strbufp @ tuck - ;
 
+: word ( c -- a )
+  >r here 1+ begin parsec dup r@ <> over 0<> and while
+    over c! 1+
+  repeat
+  r> 2drop
+  here - 1- here c!
+  here ;
+
 : type ( a u -- )
   begin dup 0> while over c@ emit >r 1+ r> 1- repeat 2drop ;
 
