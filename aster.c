@@ -70,7 +70,7 @@ int aster_streq(char *s1, char *s2) {
 
 void aster_printIns(int addr);
 
-void aster_printAddr(int addr);
+int aster_printAddr(int addr);
 
 void aster_printStack() {
     int i;
@@ -155,6 +155,7 @@ void aster_f_call() {
     if(aster_trace) {
         printf("call ");
         aster_printAddr(aster_pc);
+        printf("\n");
     }
 }
 
@@ -165,6 +166,7 @@ void aster_f_ret() {
     if(aster_trace) {
         printf("ret ");
         aster_printAddr(aster_backtrace[aster_btsp-1]);
+        printf("\n");
     }
 }
 
@@ -595,52 +597,65 @@ void aster_f_compileonly() {
     aster_words[aster_nwords-1].flags |= ASTER_COMPILEONLY;
 }
 
-void aster_printAddr(int addr) {
+int aster_printAddr(int addr) {
     int i;
     for(i = aster_nwords-1; i >= 0; i--)
         if(!(aster_words[i].flags & ASTER_FUNCTION)
-          && aster_words[i].a == addr) {
-            printf("%s\n", aster_words[i].s);
-            return;
-        }
-    printf("$%.8X\n", addr);
+          && aster_words[i].a == addr)
+            return printf("%s ", aster_words[i].s);
+    return printf("$%.8X ", addr);
 }
 
-void aster_printFunction(void (*fun)(void)) {
+int aster_printFunction(void (*fun)(void)) {
     int i;
     for(i = aster_nwords-1; i >= 0; i--)
         if((aster_words[i].flags & ASTER_FUNCTION)
-          && aster_words[i].f == fun) {
-            printf("%s\n", aster_words[i].s);
-            return;
-        }
-    printf("function $%X\n", fun);
+          && aster_words[i].f == fun)
+            return printf("%s ", aster_words[i].s);
+    return printf("function $%X ", fun);
+}
+
+int aster_printInsAddr(int addr) {
+    return printf("%.8X ", addr);
+}
+
+int aster_printIns0(int addr) {
+    void (*fun)(void);
+
+    fun = *(void (**)(void))&aster_dict[addr];
+    if(fun == aster_f_lit)
+        return printf("#%d ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
+    else if(fun == aster_f_call)
+        return aster_printAddr(*(int*)&aster_dict[addr+ASTER_FUNSZ]);
+    else if(fun == aster_f_jmp)
+        return printf("jmp %.8X ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
+    else if(fun == aster_f_jz)
+        return printf("jz %.8X ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
+    else if(fun == aster_f_ret)
+        return printf("ret ");
+    else
+        return aster_printFunction(*(void (**)(void))&aster_dict[addr]);
 }
 
 void aster_printIns(int addr) {
-    void (*fun)(void);
+    aster_printInsAddr(addr);
+    aster_printIns0(addr);
+    printf("\n");
+}
 
-    printf("%.8X ", addr);
-    fun = *(void (**)(void))&aster_dict[addr];
-
-    if(fun == aster_f_lit)
-        printf("lit $%X\n", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_call)
-        aster_printAddr(*(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_jmp)
-        printf("jmp %.8X\n", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_jz)
-        printf("jz %.8X\n", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_ret)
-        printf("ret\n");
-    else
-        aster_printFunction(*(void (**)(void))&aster_dict[addr]);
+int aster_intIn(int *a, int l, int n) {
+    int i;
+    for(i = 0; i < l; i++)
+        if(n == a[i]) return 1;
+    return 0;
 }
 
 void aster_f_see() {
     struct aster_word *w;
     int i;
     void (*fun)(void);
+    int br[200];
+    int nbr = 0, x = 0;
 
     w = aster_getNextWord();
     if(!w) return;
@@ -655,12 +670,33 @@ void aster_f_see() {
     }
 
     for(i = w->a; i < w->end; i += ASTER_FUNSZ) {
-        aster_printIns(i);
         fun = *(void (**)(void))&aster_dict[i];
+        if(fun == aster_f_jmp || fun == aster_f_jz)
+            br[nbr++] = *(int*)&aster_dict[i+ASTER_FUNSZ];
         if(fun == aster_f_jmp || fun == aster_f_jz
           || fun == aster_f_call || fun == aster_f_lit)
             i += ASTER_INTSZ;
     }
+
+    aster_printInsAddr(w->a);
+    for(i = w->a; i < w->end; i += ASTER_FUNSZ) {
+        if(aster_intIn(br, nbr, i) && x) {
+            printf("\n");
+	    aster_printInsAddr(i);
+            x = 0;
+        }
+        x += aster_printIns0(i);
+        fun = *(void (**)(void))&aster_dict[i];
+        if(x >= 60 || fun == aster_f_jmp || fun == aster_f_jz) {
+            printf("\n");
+	    aster_printInsAddr(i);
+            x = 0;
+        }
+        if(fun == aster_f_jmp || fun == aster_f_jz
+          || fun == aster_f_call || fun == aster_f_lit)
+            i += ASTER_INTSZ;
+    }
+    printf("\n");
 }
 
 void aster_f_words() {
