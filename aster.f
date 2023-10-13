@@ -172,15 +172,15 @@ create nbuf 160 allot
   dup 0< over argc @ >= or if drop 0 0 exit then
   cells (args) + @ strlen ;
 
-: do postpone >r 0 postpone literal postpone !
+: do postpone 2>r
   r> 0 >r 0 >r here >r -1 >r >r ; immediate compile-only
 
 : ?do postpone 2dup postpone <= postpone if postpone 2drop
   0 jmp, here postpone then
-  postpone >r 0 postpone literal postpone !
+  postpone 2>r
   r> swap >r 0 >r here >r -1 >r >r ; immediate compile-only
 
-: unloop r> r> drop >r ; compile-only
+: unloop r> 2r> 2drop >r ; compile-only
 
 : (end-loop) r>
   r> begin ?dup while
@@ -190,16 +190,15 @@ create nbuf 160 allot
   r> ?dup if cell - here swap ! then >r ;
 
 : loop r> r> drop
-  postpone r> postpone 1+ postpone dup postpone >r
-  0 postpone literal  here cell -  r@ funsz - cell - !
-  postpone >=  r> jz,
+  postpone 2r> postpone 1+ postpone 2dup postpone 2>r
+  postpone <=  r> jz,
   (end-loop) >r ; immediate compile-only
 
 : +loop r> r> drop
-  postpone r> postpone dup postpone -rot postpone + postpone dup postpone >r
-  0 postpone literal  here cell -  r@ funsz - cell - !
-  postpone over postpone < postpone -rot
-  postpone >= postpone <>
+  postpone 2r> ( n i2 i1 -- )
+  postpone 2dup 4 postpone literal postpone pick
+  postpone + postpone 2dup postpone 2>r
+  postpone <= postpone -rot postpone <= postpone <>
   r> jz,
   (end-loop) >r ; immediate compile-only
 
@@ -210,7 +209,7 @@ create nbuf 160 allot
 
 ' r@ alias i compile-only
 
-: j r> r> r@ swap >r >r ; compile-only
+: j r> r> r> r@ -rot >r >r swap >r ; compile-only
 
 : fill ( a u c -- )
   >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;

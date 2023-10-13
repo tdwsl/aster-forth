@@ -687,14 +687,14 @@ void aster_f_see() {
         }
         x += aster_printIns0(i);
         fun = *(void (**)(void))&aster_dict[i];
-        if(x >= 60 || fun == aster_f_jmp || fun == aster_f_jz) {
-            printf("\n");
-	    aster_printInsAddr(i);
-            x = 0;
-        }
         if(fun == aster_f_jmp || fun == aster_f_jz
           || fun == aster_f_call || fun == aster_f_lit)
             i += ASTER_INTSZ;
+        if(x >= 60 || fun == aster_f_jmp || fun == aster_f_jz) {
+            printf("\n");
+	    aster_printInsAddr(i+ASTER_FUNSZ);
+            x = 0;
+        }
     }
     printf("\n");
 }
