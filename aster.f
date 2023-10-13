@@ -61,6 +61,9 @@ decimal
 : cell+ cell + ;
 : cells cell * ;
 
+: 2! tuck ! cell+ ! ;
+: 2@ dup cell+ @ swap @ ;
+
 : ( begin parsec dup 41 = swap 0= or until ; immediate
 : \ begin parsec 0= until ; immediate
 
