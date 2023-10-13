@@ -33,6 +33,7 @@ int aster_filen = 0;
 unsigned char aster_error = 0;
 unsigned char aster_waitThen = 0;
 unsigned char aster_trace = 0;
+unsigned char aster_usedArgs = 0;
 
 const char *aster_sSU = "stack underflow !\n";
 const char *aster_sSO = "stack overflow !\n";
@@ -764,6 +765,10 @@ void aster_f_if1() {
     if(!aster_stack[--aster_sp]) aster_waitThen = 1;
 }
 
+void aster_f_accessArgs() {
+    aster_usedArgs = -1;
+}
+
 void aster_f_error() {
     aster_sassert(1);
     aster_error = aster_stack[--aster_sp];
@@ -885,6 +890,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_fputc, "fputc", 0);
     aster_addC(aster_f_fgetc, "fgetc", 0);
     aster_addC(aster_f_if1, "[if]", 0);
+    aster_addC(aster_f_accessArgs, "access-args", 0);
     aster_addC(aster_f_error, "error", 0);
     aster_addC(aster_f_trace, "trace!", 0);
     aster_addC(aster_f_bye, "bye", 0);

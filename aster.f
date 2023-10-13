@@ -170,6 +170,7 @@ create nbuf 160 allot
 
 : arg ( u -- a u )
   dup 0< over argc @ >= or if drop 0 0 exit then
+  access-args
   cells (args) + @ strlen ;
 
 : do postpone 2>r

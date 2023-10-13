@@ -7,20 +7,19 @@ int main(int argc, char **args) {
     int i;
     char *s;
 
-    if(!strcmp(args[argc-1], "-t")) {
-        argc--;
-        aster_trace = 1;
-    }
     if(argc >= 2) {
         s = args[1];
         argc--;
-        for(i = 1; i < argc; i++) args[i] = args[i+1];
-    } else s = 0;
+        for(i = 1; i < argc; i++)
+            args[i] = args[i+1];
 
-    aster_init(argc, args);
-    aster_runString(aster_boot);
+        aster_init(argc, args);
+        aster_runString(aster_boot);
 
-    if(s) aster_runFile(s);
+        aster_runFile(s);
+        for(i = 1; !aster_usedArgs && i < argc; i++)
+            aster_runFile(args[i]);
+    }
 
     printf("Aster FORTH - tdwsl 2023. Type 'bye' to exit.\n");
     aster_runStdin();
