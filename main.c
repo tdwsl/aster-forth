@@ -19,6 +19,9 @@ int main(int argc, char **args) {
         aster_runFile(s);
         for(i = 1; !aster_usedArgs && i < argc; i++)
             aster_runFile(args[i]);
+    } else {
+        aster_init(argc, args);
+        aster_runString(aster_boot);
     }
 
     printf("Aster FORTH - tdwsl 2023. Type 'bye' to exit.\n");
