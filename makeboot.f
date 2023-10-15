@@ -69,7 +69,7 @@ quo fd-out write-file throw
   2dup s" \\" str= if
     first-\ if 0 to first-\
     else
-      2drop begin buf 1 r@ read-file throw 0= buf c@ 32 <= or until
+      2drop begin buf 1 r@ read-file throw 0= buf c@ 10 = or until
       r> drop exit
     then
   then
