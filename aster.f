@@ -79,8 +79,10 @@ immediate compile-only
 : constant : postpone literal postpone ; ;
 : variable create cell allot ;
 
-' constant alias value
-: to ' funsz + postpone literal postpone ! ; immediate
+\ ' constant alias value
+\ : to ' funsz + postpone literal postpone ! ; immediate
+: value create , does> @ ;
+: to ' funsz + @ postpone literal postpone ! ; immediate
 
 create strbuf 24000 allot
 variable strbufp
@@ -164,6 +166,8 @@ create nbuf 160 allot
   cr ;
 
 : ? @ . ;
+
+: marker here create , does> @ marker! ;
 
 : strlen ( a -- a u )
   dup begin dup c@ while 1+ repeat over - ;

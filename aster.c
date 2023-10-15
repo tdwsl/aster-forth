@@ -769,6 +769,17 @@ void aster_f_accessArgs() {
     aster_usedArgs = -1;
 }
 
+void aster_f_marker() {
+    int i;
+    aster_sassert(1);
+    aster_here = aster_stack[--aster_sp];
+    for(i = 0; i < aster_nwords; i++)
+        if(aster_words[i].a >= aster_here) {
+            aster_nwords = i;
+            aster_nameBufP = aster_words[i].s;
+        }
+}
+
 void aster_f_error() {
     aster_sassert(1);
     aster_error = aster_stack[--aster_sp];
@@ -891,6 +902,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_fgetc, "fgetc", 0);
     aster_addC(aster_f_if1, "[if]", 0);
     aster_addC(aster_f_accessArgs, "access-args", 0);
+    aster_addC(aster_f_marker, "marker!", 0);
     aster_addC(aster_f_error, "error", 0);
     aster_addC(aster_f_trace, "trace!", 0);
     aster_addC(aster_f_bye, "bye", 0);
