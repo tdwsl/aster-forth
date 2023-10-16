@@ -10,7 +10,7 @@
 : while r> postpone if >r ; immediate compile-only
 : repeat r> r> postpone again >r postpone then >r ; immediate compile-only
 
-: ['] ' ; immediate compile-only
+: ['] ' postpone literal ; immediate compile-only
 
 : hex 16 base ! ;
 : decimal 10 base ! ;
