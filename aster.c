@@ -258,6 +258,21 @@ void aster_f_zeq() {
     aster_stack[aster_sp-1] = aster_stack[aster_sp-1] ? 0 : -1;
 }
 
+void aster_f_zne() {
+    aster_sassert(1);
+    aster_stack[aster_sp-1] = aster_stack[aster_sp-1] ? -1 : 0;
+}
+
+void aster_f_zge() {
+    aster_sassert(1);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] < 0) ? 0 : -1;
+}
+
+void aster_f_zlt() {
+    aster_sassert(1);
+    aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] < 0) ? -1 : 0;
+}
+
 void aster_f_inv() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = ~aster_stack[aster_sp-1];
@@ -463,7 +478,6 @@ struct aster_word *aster_findWordAddr(int a) {
 }
 
 void aster_f_alias() {
-    char buf[ASTER_BUFSZ];
     struct aster_word *w;
 
     aster_sassert(1);
@@ -478,7 +492,7 @@ void aster_f_alias() {
     } else {
         aster_words[aster_nwords].a = aster_stack[aster_sp];
         aster_words[aster_nwords].flags = 0;
-        if(w = aster_findWordAddr(aster_stack[aster_sp]))
+        if((w = aster_findWordAddr(aster_stack[aster_sp])))
             aster_words[aster_nwords].end = w->end;
     }
     aster_nwords++;
@@ -613,7 +627,7 @@ int aster_printFunction(void (*fun)(void)) {
         if((aster_words[i].flags & ASTER_FUNCTION)
           && aster_words[i].f == fun)
             return printf("%s ", aster_words[i].s);
-    return printf("function $%X ", fun);
+    return printf("function $%X ", (unsigned)(size_t)fun);
 }
 
 int aster_printInsAddr(int addr) {
@@ -666,7 +680,7 @@ void aster_f_see() {
     printf("\n");
 
     if(w->flags & ASTER_FUNCTION) {
-        printf("function $%.X\n", w->f);
+        printf("function $%.X\n", (unsigned)(size_t)w->f);
         return;
     }
 
@@ -834,7 +848,7 @@ void aster_init(int argc, char **args) {
 
     for(i = 0; i < argc; i++) {
         *(int*)&aster_dict[ASTER_START+i*ASTER_INTSZ] = aster_here;
-        strcpy(&aster_dict[aster_here], args[i]);
+        strcpy((char*)&aster_dict[aster_here], args[i]);
         aster_here += strlen(args[i])+1;
     }
 
@@ -853,6 +867,9 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_shr, "2/", 0);
     aster_addC(aster_f_shl, "2*", 0);
     aster_addC(aster_f_zeq, "0=", 0);
+    aster_addC(aster_f_zne, "0<>", 0);
+    aster_addC(aster_f_zge, "0>=", 0);
+    aster_addC(aster_f_zlt, "0<", 0);
     aster_addC(aster_f_inv, "invert", 0);
     aster_addC(aster_f_swap, "swap", 0);
     aster_addC(aster_f_dup,  "dup",  0);
@@ -1011,7 +1028,7 @@ void aster_run() {
             continue;
         }
 
-        if(w = aster_findWord(aster_buf)) {
+        if((w = aster_findWord(aster_buf))) {
             if(*(int*)&aster_dict[ASTER_STATUS]) {
                 if(w->flags & ASTER_IMMEDIATE) {
                     if(w->flags & ASTER_FUNCTION) w->f();

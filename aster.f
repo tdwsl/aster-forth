@@ -15,19 +15,14 @@
 : hex 16 base ! ;
 : decimal 10 base ! ;
 
-: 0<> 0= 0= ;
 : = - 0= ;
-: <> - 0= 0= ;
-hex
-: 0>= 80000000 and 0= ;
-: 0<  80000000 and 0= 0= ;
-: 0>  1- 80000000 and 0= ;
-: 0<= 1- 80000000 and 0= 0= ;
-: >= - 80000000 and 0= ;
-: <  - 80000000 and 0= 0= ;
-: >  - 1- 80000000 and 0= ;
-: <= - 1- 80000000 and 0= 0= ;
-decimal
+: <> - 0<> ;
+: 0> 1- 0>= ;
+: 0<= 1- 0< ;
+: >= - 0>= ;
+: <  - 0< ;
+: >  - 1- 0>= ;
+: <= - 1- 0< ;
 
 : invert -1 xor ;
 : negate -1 xor 1+ ;
@@ -79,10 +74,8 @@ immediate compile-only
 : constant : postpone literal postpone ; ;
 : variable create cell allot ;
 
-\ ' constant alias value
-\ : to ' funsz + postpone literal postpone ! ; immediate
-: value create , does> @ ;
-: to ' funsz + @ postpone literal postpone ! ; immediate
+' constant alias value
+: to ' funsz + postpone literal postpone ! ; immediate
 
 create strbuf 24000 allot
 variable strbufp
