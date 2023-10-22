@@ -196,7 +196,7 @@ create nbuf 160 allot
   postpone 2r> ( n i2 i1 -- )
   postpone 2dup 4 postpone literal postpone pick
   postpone + postpone 2dup postpone 2>r
-  postpone <= postpone -rot postpone <= postpone <>
+  postpone <= postpone -rot postpone <= postpone <> postpone nip
   r> jz,
   (end-loop) >r ; immediate compile-only
 
