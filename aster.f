@@ -71,11 +71,14 @@
 immediate compile-only
 
 : create : 0 postpone literal here postpone ; cell dup allot - here swap ! ;
-: constant : postpone literal postpone ; ;
 : variable create cell allot ;
-
-' constant alias value
+: constant : postpone literal ['] literal compile,
+  postpone ; postpone immediate ;
+: value : postpone literal postpone ; ;
 : to ' funsz + postpone literal postpone ! ; immediate
+
+-1 constant true
+0 constant false
 
 create strbuf 24000 allot
 variable strbufp
@@ -208,6 +211,24 @@ create nbuf 160 allot
 ' r@ alias i compile-only
 
 : j r> r> r> r@ -rot >r >r swap >r ; compile-only
+
+create cs 20 allot
+variable csp
+cs csp !
+
+: >cs csp @ c! 1 csp +! ;
+: cs> -1 csp +! csp @ c@ ;
+
+: case 0 >cs ; immediate compile-only
+
+: of
+  postpone over postpone = r> postpone if >r postpone drop
+  cs> 1+ >cs ; immediate compile-only
+
+: endof r> postpone else >r ; immediate compile-only
+
+: endcase postpone drop
+  r> cs> begin ?dup while 1- postpone then repeat >r ; immediate compile-only
 
 : fill ( a u c -- )
   >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;

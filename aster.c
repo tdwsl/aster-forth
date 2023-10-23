@@ -253,6 +253,18 @@ void aster_f_shl() {
     aster_stack[aster_sp-1] <<= 1;
 }
 
+void aster_f_rshift() {
+    aster_sassert(2);
+    aster_sp--;
+    aster_stack[aster_sp-1] >>= aster_stack[aster_sp];
+}
+
+void aster_f_lshift() {
+    aster_sassert(2);
+    aster_sp--;
+    aster_stack[aster_sp-1] <<= aster_stack[aster_sp];
+}
+
 void aster_f_zeq() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = aster_stack[aster_sp-1] ? 0 : -1;
@@ -351,6 +363,18 @@ void aster_f_pick() {
     aster_stack[aster_sp-1] =
       aster_stack[aster_sp-2-aster_stack[aster_sp-1]];
     aster_soassert(1);
+}
+
+void aster_f_roll() {
+    int i, j, r, t;
+    aster_sassert(1);
+    r = aster_stack[--aster_sp];
+    if(r <= 0) return;
+    aster_sassert(r+1);
+    t = aster_stack[aster_sp-r-1];
+    for(i = aster_sp-r-1; i < aster_sp-1; i++)
+        aster_stack[i] = aster_stack[i+1];
+    aster_stack[aster_sp-1] = t;
 }
 
 void aster_f_sw() {
@@ -866,6 +890,8 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_dec, "1-", 0);
     aster_addC(aster_f_shr, "2/", 0);
     aster_addC(aster_f_shl, "2*", 0);
+    aster_addC(aster_f_rshift, "rshift", 0);
+    aster_addC(aster_f_lshift, "lshift", 0);
     aster_addC(aster_f_zeq, "0=", 0);
     aster_addC(aster_f_zne, "0<>", 0);
     aster_addC(aster_f_zge, "0>=", 0);
@@ -881,6 +907,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_mrot, "-rot", 0);
     aster_addC(aster_f_depth, "depth", 0);
     aster_addC(aster_f_pick, "pick", 0);
+    aster_addC(aster_f_roll, "roll", 0);
     aster_addC(aster_f_sw, "!", 0);
     aster_addC(aster_f_lw, "@", 0);
     aster_addC(aster_f_addsw, "+!", 0);
