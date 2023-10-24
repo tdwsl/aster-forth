@@ -77,6 +77,11 @@ immediate compile-only
 : value : postpone literal postpone ; ;
 : to ' funsz + postpone literal postpone ! ; immediate
 
+: noop ;
+: defer create ['] noop , does> @ execute ;
+: >body funsz 2* cell+ cell+ + ;
+: is ' >body ! ; immediate
+
 -1 constant true
 0 constant false
 
