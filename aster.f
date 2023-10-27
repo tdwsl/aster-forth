@@ -82,6 +82,14 @@ immediate compile-only
 : >body funsz 2* cell+ cell+ + ;
 : is ' >body postpone literal postpone ! ; immediate
 
+variable struct-sz
+: begin-structure 0 struct-sz ! create 0 , last >body does> @ ;
+: +field create struct-sz @ , struct-sz +! does> @ + ;
+: field: cell +field ;
+: 2field: 2 cells +field ;
+: cfield: 1 +field ;
+: end-structure struct-sz @ swap ! ;
+
 -1 constant true
 0 constant false
 
