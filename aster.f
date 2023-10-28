@@ -72,6 +72,7 @@ immediate compile-only
 
 : create : 0 postpone literal here postpone ; cell dup allot - here swap ! ;
 : variable create cell allot ;
+: 2variable create cell cell+ allot ;
 : constant : postpone literal ['] literal compile,
   postpone ; postpone immediate ;
 : value : postpone literal postpone ; ;
