@@ -30,8 +30,8 @@
 : / /mod nip ;
 : mod /mod drop ;
 
-: 2>r r> -rot swap >r >r >r ;
-: 2r> r> r> r> swap rot >r ;
+: 2>r r> -rot swap >r >r >r ; compile-only
+: 2r> r> r> r> swap rot >r ; compile-only
 
 : ?dup dup if dup then ;
 
@@ -70,10 +70,15 @@
   here funsz cell+ 2* + postpone literal postpone (does) ;
 immediate compile-only
 
+: 2literal compile? if swap then
+  postpone literal postpone literal ; immediate compile-only
+
 : create : 0 postpone literal here postpone ; cell dup allot - here swap ! ;
 : variable create cell allot ;
 : 2variable create cell cell+ allot ;
 : constant : postpone literal ['] literal compile,
+  postpone ; postpone immediate ;
+: 2constant : postpone 2literal ['] 2literal compile,
   postpone ; postpone immediate ;
 : value : postpone literal postpone ; ;
 : to ' funsz + postpone literal postpone ! ; immediate
@@ -126,9 +131,6 @@ strbuf strbufp !
 
 : char parse-name drop c@ ;
 : [char] char postpone literal ; immediate compile-only
-
-: 2literal compile? if swap then
-  postpone literal postpone literal ; immediate compile-only
 
 : ." [char] " parse-until
   compile? if dup save-mem then postpone 2literal postpone type ; immediate
