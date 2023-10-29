@@ -83,10 +83,10 @@ immediate compile-only
 : value : postpone literal postpone ; ;
 : to ' funsz + postpone literal postpone ! ; immediate
 
-: noop ;
-: defer create ['] noop , does> @ execute ;
 : >body funsz 2* cell+ cell+ + ;
-: is ' >body postpone literal postpone ! ; immediate
+
+' create alias defer
+: is ' postpone literal postpone jmp! ; immediate
 
 variable struct-sz
 : begin-structure 0 struct-sz ! create 0 , last >body does> @ ;
