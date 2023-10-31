@@ -171,6 +171,10 @@ void aster_f_ret() {
     }
 }
 
+void aster_f_skip() {
+    aster_pc = *(int*)&aster_dict[aster_pc];
+}
+
 void aster_f_rph() {
     aster_sassert(1);
     aster_rstack[aster_rsp++] = aster_stack[--aster_sp];
@@ -548,6 +552,14 @@ void aster_f_jzc() {
     aster_here += ASTER_INTSZ;
 }
 
+void aster_f_skipc() {
+    aster_sassert(1);
+    *(void (**)(void))&aster_dict[aster_here] = aster_f_skip;
+    aster_here += ASTER_FUNSZ;
+    *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
+    aster_here += ASTER_INTSZ;
+}
+
 void aster_f_jmps() {
     aster_sassert(2);
     *(void (**)(void))&aster_dict[aster_stack[aster_sp-1]] = aster_f_jmp;
@@ -672,6 +684,8 @@ int aster_printIns0(int addr) {
         return printf("jz %.8X ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
     else if(fun == aster_f_ret)
         return printf("ret ");
+    else if(fun == aster_f_skip)
+        return printf("... ");
     else
         return aster_printFunction(*(void (**)(void))&aster_dict[addr]);
 }
@@ -715,6 +729,8 @@ void aster_f_see() {
         if(fun == aster_f_jmp || fun == aster_f_jz
           || fun == aster_f_call || fun == aster_f_lit)
             i += ASTER_INTSZ;
+        else if(fun == aster_f_skip)
+            i = *(int*)&aster_dict[i+ASTER_FUNSZ]-ASTER_FUNSZ;
     }
 
     aster_printInsAddr(w->a);
@@ -734,6 +750,8 @@ void aster_f_see() {
 	    aster_printInsAddr(i+ASTER_FUNSZ);
             x = 0;
         }
+        if(fun == aster_f_skip)
+            i = *(int*)&aster_dict[i+ASTER_FUNSZ]-ASTER_FUNSZ;
     }
     printf("\n");
 }
@@ -923,6 +941,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_literal, "literal", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_jmpc, "jmp,", ASTER_COMPILEONLY);
     aster_addC(aster_f_jzc,  "jz,",  ASTER_COMPILEONLY);
+    aster_addC(aster_f_skipc, "skip,", ASTER_COMPILEONLY);
     aster_addC(aster_f_jmps, "jmp!", 0);
     aster_addC(aster_f_lits, "lit!", 0);
     aster_addC(aster_f_recurse, "recurse", ASTER_COMPILEONLY|ASTER_IMMEDIATE);

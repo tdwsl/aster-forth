@@ -100,24 +100,26 @@ variable struct-sz
 -1 constant true
 0 constant false
 
-create strbuf 24000 allot
-variable strbufp
-strbuf strbufp !
+create (strbuf) 240 allot
+(strbuf) value strbuf
 
 : parse-name ( -- a u )
-  strbufp @ begin
+  strbuf begin
     parsec dup >r over c! 1+
   r> 32 <= until
-  1- strbufp @ tuck - ;
-
-: save-mem ( u -- )
-  strbufp +! ;
+  1- strbuf tuck - ;
 
 : parse-until ( c -- a u )
-  >r strbufp @ begin
+  >r strbuf begin
     parsec dup >r over c! 1+
   r> dup r@ = swap 0= or until
-  r> drop 1- strbufp @ tuck - ;
+  r> drop 1- strbuf tuck - ;
+
+: str, ( a u -- a u )
+  here over + funsz + cell+ skip,
+  here over 2>r
+  swap 1- swap begin dup while 1- swap 1+ tuck c@ c, repeat 2drop
+  2r> ;
 
 : word ( c -- a )
   >r here 1+ begin parsec dup r@ <> over 0<> and while
@@ -133,13 +135,14 @@ strbuf strbufp !
 : char parse-name drop c@ ;
 : [char] char postpone literal ; immediate compile-only
 
-: ." [char] " parse-until
-  compile? if dup save-mem then postpone 2literal postpone type ; immediate
+: ." [char] " parse-until compile? if str, postpone 2literal then
+  postpone type ; immediate
 
-: s" [char] " parse-until dup save-mem postpone 2literal ; immediate
+: s" [char] " parse-until str, postpone 2literal ; immediate
 
-: c" 1 strbufp +!
-  [char] " parse-until dup save-mem over 1- c! 1- postpone literal ; immediate
+: c" strbuf 1+ to strbuf [char] " parse-until
+  strbuf 1- to strbuf
+  nip strbuf 2dup c! swap 1+ str, drop postpone literal ; immediate
 
 : count dup c@ >r 1+ r> ;
 
