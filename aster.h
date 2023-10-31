@@ -1,7 +1,7 @@
 #ifndef ASTER_H
 #define ASTER_H
 
-#define ASTER_DICTSZ      120000
+#define ASTER_DICTSZ      245760
 #define ASTER_MAXWORDS    8000
 #define ASTER_BUFSZ       200
 #define ASTER_LINEBUFSZ   560
