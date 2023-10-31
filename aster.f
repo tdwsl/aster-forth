@@ -100,6 +100,23 @@ variable struct-sz
 -1 constant true
 0 constant false
 
+: fill ( a u c -- )
+  >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;
+
+: move ( a a u -- )
+  >r begin r@ while over c@ over c! r> 1- >r
+  1+ >r 1+ r> repeat r> drop 2drop ;
+
+: erase ( a u -- )
+  >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
+
+heap0 value heap
+: hallot negate heap + to heap ;
+
+: heap-save ( a u -- )
+  dup hallot
+  heap swap move ;
+
 create (strbuf) 240 allot
 (strbuf) value strbuf
 
@@ -116,10 +133,7 @@ create (strbuf) 240 allot
   r> drop 1- strbuf tuck - ;
 
 : str, ( a u -- a u )
-  here over + funsz + cell+ skip,
-  here over 2>r
-  swap 1- swap begin dup while 1- swap 1+ tuck c@ c, repeat 2drop
-  2r> ;
+  dup >r heap-save heap r> ;
 
 : word ( c -- a )
   >r here 1+ begin parsec dup r@ <> over 0<> and while
@@ -249,16 +263,6 @@ cs csp !
 
 : endcase postpone drop
   r> cs> begin ?dup while 1- postpone then repeat >r ; immediate compile-only
-
-: fill ( a u c -- )
-  >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;
-
-: move ( a a u -- )
-  >r begin r@ while over c@ over c! r> 1- >r
-  1+ >r 1+ r> repeat r> drop 2drop ;
-
-: erase ( a u -- )
-  >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
 
 : str= ( a u a u -- )
   rot over <> if 2drop drop 0 exit then
