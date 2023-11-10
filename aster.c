@@ -95,6 +95,7 @@ void aster_runAddr(int pc) {
 
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
+    aster_backtrace[aster_btsp++] = 0;
 
     prsp = aster_rsp;
     psp  = aster_sp;
@@ -424,7 +425,11 @@ void aster_f_execute() {
     aster_sassert(1);
     aster_sp--;
     if(aster_stack[aster_sp] < 0) aster_words[~aster_stack[aster_sp]].f();
-    else aster_runAddr(aster_stack[aster_sp]);
+    else {
+        aster_rstack[aster_rsp++] = aster_pc;
+        aster_pc = aster_stack[aster_sp];
+        aster_backtrace[aster_btsp++] = aster_pc;
+    }
 }
 
 struct aster_word *aster_getNextWord() {
@@ -1117,6 +1122,17 @@ void aster_runFile(const char *filename) {
     fclose(fp);
 }
 
+void aster_printBacktrace() {
+    int i;
+    if(!aster_btsp) return;
+    printf("backtrace:\n");
+    for(i = 0; i < aster_btsp; i++) {
+        printf("  ");
+        aster_printAddr(aster_backtrace[i]);
+        printf("\n");
+    }
+}
+
 void aster_runStdin() {
     char buf[ASTER_LINEBUFSZ];
     char *p;
@@ -1126,6 +1142,7 @@ void aster_runStdin() {
     for(;;) {
         if(aster_error) {
             printf("error\n");
+            aster_printBacktrace();
             aster_btsp = 0;
             aster_sp = 0;
             aster_rsp = 0;
