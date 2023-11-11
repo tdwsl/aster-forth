@@ -16,10 +16,9 @@ struct aster_word {
 unsigned char aster_dict[ASTER_DICTSZ];
 int aster_stack[256];
 int aster_rstack[256];
-int aster_backtrace[256];
-unsigned char aster_sp=0, aster_rsp=0, aster_btsp=0;
+unsigned char aster_sp=0, aster_rsp=0;
 int aster_here = 0;
-int aster_pc;
+int aster_pc, aster_ppc;
 char aster_buf[ASTER_BUFSZ];
 struct aster_word aster_words[ASTER_MAXWORDS];
 int aster_nwords = 0;
@@ -32,8 +31,8 @@ FILE *aster_files[ASTER_NFILES];
 int aster_filen = 0;
 unsigned char aster_error = 0;
 unsigned char aster_waitThen = 0;
-unsigned char aster_trace = 0;
 unsigned char aster_usedArgs = 0;
+void (*aster_lastFun)(void);
 
 const char *aster_sSU = "stack underflow !\n";
 const char *aster_sSO = "stack overflow !\n";
@@ -90,35 +89,22 @@ void aster_printRstack() {
 }
 
 void aster_runAddr(int pc) {
-    void (*fun)(void);
     int psp, prsp;
+    void (*fun)(void);
+
+    aster_lastFun = 0;
 
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
-    aster_backtrace[aster_btsp++] = 0;
 
     prsp = aster_rsp;
     psp  = aster_sp;
 
-    if(aster_trace)
-        aster_printAddr(aster_pc);
-
     do {
-        if(aster_trace)
-            aster_printIns(aster_pc);
-
+        aster_ppc = aster_pc;
         fun = *(void (**)(void))&aster_dict[aster_pc];
         aster_pc += ASTER_FUNSZ;
         fun();
-
-        if(psp != aster_sp && aster_trace) {
-            psp = aster_sp;
-            aster_printStack();
-        }
-        if(prsp != aster_rsp && aster_trace) {
-            prsp = aster_rsp;
-            aster_printRstack();
-        }
     } while((aster_pc != 0) & (!aster_error));
 }
 
@@ -152,24 +138,10 @@ void aster_f_jz() {
 void aster_f_call() {
     aster_rstack[aster_rsp++] = aster_pc + ASTER_INTSZ;
     aster_pc = *(int*)&aster_dict[aster_pc];
-    aster_backtrace[aster_btsp++] = aster_pc;
-
-    if(aster_trace) {
-        printf("call ");
-        aster_printAddr(aster_pc);
-        printf("\n");
-    }
 }
 
 void aster_f_ret() {
     aster_pc = aster_rstack[--aster_rsp];
-    aster_btsp--;
-
-    if(aster_trace) {
-        printf("ret ");
-        aster_printAddr(aster_backtrace[aster_btsp-1]);
-        printf("\n");
-    }
 }
 
 void aster_f_rph() {
@@ -428,7 +400,6 @@ void aster_f_execute() {
     else {
         aster_rstack[aster_rsp++] = aster_pc;
         aster_pc = aster_stack[aster_sp];
-        aster_backtrace[aster_btsp++] = aster_pc;
     }
 }
 
@@ -828,11 +799,6 @@ void aster_f_error() {
     aster_error = aster_stack[--aster_sp];
 }
 
-void aster_f_trace() {
-    aster_sassert(1);
-    aster_trace = aster_stack[--aster_sp] != 0;
-}
-
 void aster_f_bye() {
     exit(0);
 }
@@ -866,7 +832,6 @@ void aster_init(int argc, char **args) {
 
     aster_sp = 0;
     aster_rsp = 0;
-    aster_btsp = 0;
     aster_here = ASTER_START+argc*ASTER_INTSZ;
     aster_nwords = 0;
     aster_error = 0;
@@ -953,7 +918,6 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_accessArgs, "access-args", 0);
     aster_addC(aster_f_marker, "marker!", 0);
     aster_addC(aster_f_error, "error", 0);
-    aster_addC(aster_f_trace, "trace!", 0);
     aster_addC(aster_f_bye, "bye", 0);
 
     aster_addConstant(ASTER_BASE,   "base");
@@ -1064,8 +1028,10 @@ void aster_run() {
         if((w = aster_findWord(aster_buf))) {
             if(*(int*)&aster_dict[ASTER_STATUS]) {
                 if(w->flags & ASTER_IMMEDIATE) {
-                    if(w->flags & ASTER_FUNCTION) w->f();
-                    else aster_runAddr(w->a);
+                    if(w->flags & ASTER_FUNCTION) {
+                        aster_lastFun = w->f;
+                        w->f();
+                    } else aster_runAddr(w->a);
                 } else if(w->flags & ASTER_FUNCTION) {
                     *(void(**)(void))&aster_dict[aster_here] = w->f;
                     aster_here += ASTER_FUNSZ;
@@ -1079,6 +1045,7 @@ void aster_run() {
                 printf("%s is compile only\n", w->s);
                 aster_error = 1;
             } else if(w->flags & ASTER_FUNCTION) {
+                aster_lastFun = w->f;
                 w->f();
             } else {
                 aster_runAddr(w->a);
@@ -1122,14 +1089,29 @@ void aster_runFile(const char *filename) {
     fclose(fp);
 }
 
+struct aster_word *aster_addrWord(int a) {
+    int i;
+    struct aster_word *w;
+    for(i = 0; i < aster_nwords; i++) {
+        w = &aster_words[i];
+        if(!(w->flags & ASTER_FUNCTION) && a >= w->a && a < w->end)
+            return w;
+    }
+    return 0;
+}
+
 void aster_printBacktrace() {
     int i;
-    if(!aster_btsp) return;
+    struct aster_word *w;
+    if(aster_rsp) aster_rstack[aster_rsp++] = aster_pc;
     printf("backtrace:\n");
-    for(i = 0; i < aster_btsp; i++) {
-        printf("  ");
-        aster_printAddr(aster_backtrace[i]);
-        printf("\n");
+    if(aster_lastFun) aster_printFunction(aster_lastFun);
+    else aster_printIns0(aster_ppc);
+    printf("\n");
+    for(i = aster_rsp-1; i > 0; i--) {
+        w = aster_addrWord(aster_rstack[i]);
+        if(w) printf("%s\n", w->s);
+        else printf("$%.8x\n", aster_rstack[i]);
     }
 }
 
@@ -1143,7 +1125,6 @@ void aster_runStdin() {
         if(aster_error) {
             printf("error\n");
             aster_printBacktrace();
-            aster_btsp = 0;
             aster_sp = 0;
             aster_rsp = 0;
             if(*(int*)&aster_dict[ASTER_STATUS]) {
