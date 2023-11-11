@@ -395,10 +395,10 @@ void aster_f_execute() {
     aster_sassert(1);
     aster_sp--;
     if(aster_stack[aster_sp] < 0) aster_words[~aster_stack[aster_sp]].f();
-    else {
+    else if(aster_rsp) {
         aster_rstack[aster_rsp++] = aster_pc;
         aster_pc = aster_stack[aster_sp];
-    }
+    } else aster_runAddr(aster_stack[aster_sp]);
 }
 
 struct aster_word *aster_getNextWord() {
