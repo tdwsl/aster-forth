@@ -92,8 +92,6 @@ void aster_runAddr(int pc) {
     int psp, prsp;
     void (*fun)(void);
 
-    aster_lastFun = 0;
-
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
 
@@ -1017,6 +1015,9 @@ void aster_run() {
     struct aster_word *w;
 
     while(!aster_error) {
+        aster_ppc = 0;
+        aster_lastFun = 0;
+
         aster_getNext(aster_buf, ASTER_BUFSZ);
         if(!(*aster_buf)) return;
 
@@ -1103,6 +1104,7 @@ struct aster_word *aster_addrWord(int a) {
 void aster_printBacktrace() {
     int i;
     struct aster_word *w;
+    if(!(aster_lastFun || aster_ppc)) return;
     if(aster_rsp) aster_rstack[aster_rsp++] = aster_pc;
     printf("backtrace:\n");
     if(aster_lastFun) aster_printFunction(aster_lastFun);
