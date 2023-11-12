@@ -24,8 +24,8 @@
 : >  - 1- 0>= ;
 : <= - 1- 0< ;
 
-: invert -1 xor ;
-: negate -1 xor 1+ ;
+: negate invert 1+ ;
+: abs dup 0< if negate then ;
 
 : / /mod nip ;
 : mod /mod drop ;
@@ -117,20 +117,17 @@ heap0 value heap
   dup hallot
   heap swap move ;
 
-create (strbuf) 240 allot
-(strbuf) value strbuf
-
 : parse-name ( -- a u )
-  strbuf begin
+  here begin
     parsec dup >r over c! 1+
   r> 32 <= until
-  1- strbuf tuck - ;
+  1- here tuck - ;
 
 : parse-until ( c -- a u )
-  >r strbuf begin
+  >r here begin
     parsec dup >r over c! 1+
   r> dup r@ = swap 0= or until
-  r> drop 1- strbuf tuck - ;
+  r> drop 1- here tuck - ;
 
 : str, ( a u -- a u )
   dup >r heap-save heap r> ;
@@ -154,9 +151,8 @@ create (strbuf) 240 allot
 
 : s" [char] " parse-until str, postpone 2literal ; immediate
 
-: c" strbuf 1+ to strbuf [char] " parse-until
-  strbuf 1- to strbuf
-  nip strbuf 2dup c! swap 1+ str, drop postpone literal ; immediate
+: c" 1 allot [char] " parse-until -1 allot
+  nip here 2dup c! swap 1+ str, drop postpone literal ; immediate
 
 : count dup c@ >r 1+ r> ;
 
@@ -165,33 +161,31 @@ create (strbuf) 240 allot
 
 : spaces begin dup 0> while 1- space repeat drop ;
 
-create nbuf 160 allot
+create pic 48 allot
+here constant picend
+picend value picp
 
-: .digit ( u -- )
-  dup 10 < if [char] 0
-  else [ char a 10 - ]l
-  then + emit ;
+: hold picp 1- dup to picp c! ;
+: holds begin dup while over c@ hold 1- >r 1+ r> repeat 2drop ;
 
-: >nbuf ( n -- u )
-  dup 0< if [char] - emit negate then
-  nbuf >r
-  begin
-    base @ /mod
-    swap r@ c! r> 1+ >r
-  dup 0= until drop
-  r> nbuf - ;
+: digit
+  abs dup 10 >= if [ char a 10 - ]l
+  else [char] 0 then + ;
 
-: .nbuf ( u -- )
-  nbuf + begin 1- dup c@ .digit dup nbuf = until drop ;
+: d>s dup 0< ;
+: <# picend to picp ;
+: # >r base @ /mod swap digit hold r> ;
+: #> nip if [char] - hold then picp picend over - ;
+: #s begin over while # repeat ;
 
-: (.) >nbuf .nbuf ;
+: (.) d>s <# #s #> ;
 
-: . (.) space ;
+: . (.) type space ;
 
-: .r swap >nbuf swap over - spaces .nbuf ;
+: .r swap (.) rot over - spaces type ;
 
 : .s ( -- )
-  ." stack(" depth (.) ." ): "
+  ." stack(" depth (.) type ." ): "
   depth begin dup while dup >r 1- pick . r> 1- repeat drop
   cr ;
 
@@ -246,12 +240,11 @@ create nbuf 160 allot
 
 : j r> r> r> r@ -rot >r >r swap >r ; compile-only
 
-create cs 20 allot
-variable csp
-cs csp !
+create cs 32 allot
+0 value cso
 
-: >cs csp @ c! 1 csp +! ;
-: cs> -1 csp +! csp @ c@ ;
+: >cs cs cso + c! cso 1+ %11111 and to cso ;
+: cs> cs cso 1- %11111 and dup to cso + c@ ;
 
 : case 0 >cs ; immediate compile-only
 
@@ -322,4 +315,7 @@ here 10 c,
 : write-line ( a u f -- ior )
   dup >r write-file
   ?dup 0= if literal 1 r> write-file else r> drop then ;
+
+168 constant pad-size
+create pad pad-size allot
 
