@@ -176,7 +176,7 @@ picend value picp
 : <# picend to picp ;
 : # >r base @ /mod swap digit hold r> ;
 : #> nip if [char] - hold then picp picend over - ;
-: #s begin over while # repeat ;
+: #s begin # over 0= until ;
 
 : (.) d>s <# #s #> ;
 
