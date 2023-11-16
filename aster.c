@@ -797,6 +797,22 @@ void aster_f_error() {
     aster_error = aster_stack[--aster_sp];
 }
 
+int aster_number(char *s, int *n);
+
+void aster_f_number() {
+    char *buf;
+    aster_sassert(2);
+    buf = alloca(aster_stack[aster_sp-1]+1);
+    memcpy(buf, &aster_dict[aster_stack[aster_sp-2]], aster_stack[aster_sp-1]);
+    buf[aster_stack[aster_sp-1]] = 0;
+    if(aster_number(buf, &aster_stack[aster_sp-2]))
+        aster_stack[aster_sp-1] = -1;
+    else {
+        aster_sp--;
+        aster_stack[aster_sp-1] = 0;
+    }
+}
+
 void aster_f_bye() {
     exit(0);
 }
@@ -916,6 +932,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_accessArgs, "access-args", 0);
     aster_addC(aster_f_marker, "marker!", 0);
     aster_addC(aster_f_error, "error", 0);
+    aster_addC(aster_f_number, "number", 0);
     aster_addC(aster_f_bye, "bye", 0);
 
     aster_addConstant(ASTER_BASE,   "base");

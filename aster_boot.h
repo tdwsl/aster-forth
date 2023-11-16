@@ -95,7 +95,9 @@ static char *aster_boot =
 "over i + c! loop 2drop r> -1 0 ; : write-file dup valid-file? 0= if 2drop "
 "drop -1 exit then -rot 0 ?do 2dup i + c@ swap fputc loop 2drop 0 ; here 10 "
 "c, : write-line dup >r write-file ?dup 0= if literal 1 r> write-file else "
-"r> drop then ; 168 constant pad-size create pad pad-size allot ";
+"r> drop then ; 168 constant pad-size create pad pad-size allot : esc[ 27 "
+"emit [char] [ emit ; : page esc[ .\" 2J\" esc[ .\" H\" ; : at-xy esc[ .\" "
+"H\" ?dup if esc[ (.) type .\" B\" then ?dup if esc[ (.) type .\" C\" then ; ";
 
 #endif
 

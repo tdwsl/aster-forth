@@ -319,3 +319,8 @@ here 10 c,
 168 constant pad-size
 create pad pad-size allot
 
+: esc[ 27 emit [char] [ emit ;
+: page esc[ ." 2J" esc[ ." H" ;
+: at-xy esc[ ." H" ?dup if esc[ (.) type ." B" then
+  ?dup if esc[ (.) type ." C" then ;
+
