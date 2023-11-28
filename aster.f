@@ -7,7 +7,7 @@
 : if r> 0 jz, here >r >r ; immediate compile-only
 : then r> here r> cell - ! >r ; immediate compile-only
 : else r> 0 jmp, postpone then here >r >r ; immediate compile-only
-: while r> postpone if >r ; immediate compile-only
+' if alias while immediate compile-only
 : repeat r> r> postpone again >r postpone then >r ; immediate compile-only
 
 : ['] ' postpone literal ; immediate compile-only
@@ -274,6 +274,8 @@ create cs 32 allot
 
 : throw if ." throw" cr -1 error then ;
 
+\ file handling words
+
 : bin 3 + ;
 
 ' open-file alias create-file
@@ -318,6 +320,30 @@ here 10 c,
 
 168 constant pad-size
 create pad pad-size allot
+
+\ redefine looping to allow multiple whiles
+
+create cstack 200 cells allot
+cstack 200 + constant cstacktop
+cstack value csp
+
+: >c csp
+  dup cstacktop >= if ." compile stack overflow" cr
+  cstack to csp -1 error then
+  ! csp cell+ to csp ; compile-only
+
+: c> csp cell - dup
+  dup cstack < if ." compile stack underflow" cr
+  cstack to csp -1 error then
+  to csp @ ; compile-only
+
+: begin here >c ; immediate compile-only
+: again c> jmp, ; immediate compile-only
+: until c> jz, ; immediate compile-only
+
+: repeat r> c> jmp, here r> cell - ! >r ; immediate compile-only
+
+\ ansi escape
 
 : esc[ 27 emit [char] [ emit ;
 : page esc[ ." 2J" esc[ ." H" ;

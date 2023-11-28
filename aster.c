@@ -16,6 +16,7 @@ struct aster_word {
 unsigned char aster_dict[ASTER_DICTSZ];
 int aster_stack[256];
 int aster_rstack[256];
+int aster_cstack[256];
 unsigned char aster_sp=0, aster_rsp=0;
 int aster_here = 0;
 int aster_pc, aster_ppc;
@@ -33,12 +34,6 @@ unsigned char aster_error = 0;
 unsigned char aster_waitThen = 0;
 unsigned char aster_usedArgs = 0;
 void (*aster_lastFun)(void);
-
-const char *aster_sSU = "stack underflow !\n";
-const char *aster_sSO = "stack overflow !\n";
-const char *aster_sRU = "return stack underflow !\n";
-const char *aster_sRO = "return stack overflow !\n";
-const char *aster_sOB = "invalid memory address\n";
 
 void aster_getNext(char *buf, int max) {
     int i;
