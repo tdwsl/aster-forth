@@ -240,22 +240,31 @@ picend value picp
 
 : j r> r> r> r@ -rot >r >r swap >r ; compile-only
 
-create cs 32 allot
-0 value cso
+create cstack 200 cells allot
+cstack 200 + constant cstacktop
+cstack value csp
 
-: >cs cs cso + c! cso 1+ %11111 and to cso ;
-: cs> cs cso 1- %11111 and dup to cso + c@ ;
+: >c csp
+  dup cstacktop >= if ." compile stack overflow" cr
+  cstack to csp -1 error then
+  ! csp cell+ to csp ; compile-only
 
-: case 0 >cs ; immediate compile-only
+: c> csp cell - dup
+  dup cstack < if ." compile stack underflow" cr
+  cstack to csp -1 error then
+  to csp @ ; compile-only
+
+
+: case 0 >c ; immediate compile-only
 
 : of
   postpone over postpone = r> postpone if >r postpone drop
-  cs> 1+ >cs ; immediate compile-only
+  c> 1+ >c ; immediate compile-only
 
 : endof r> postpone else >r ; immediate compile-only
 
 : endcase postpone drop
-  r> cs> begin ?dup while 1- postpone then repeat >r ; immediate compile-only
+  r> c> begin ?dup while 1- postpone then repeat >r ; immediate compile-only
 
 : str= ( a u a u -- )
   rot over <> if 2drop drop 0 exit then
@@ -322,20 +331,6 @@ here 10 c,
 create pad pad-size allot
 
 \ redefine looping to allow multiple whiles
-
-create cstack 200 cells allot
-cstack 200 + constant cstacktop
-cstack value csp
-
-: >c csp
-  dup cstacktop >= if ." compile stack overflow" cr
-  cstack to csp -1 error then
-  ! csp cell+ to csp ; compile-only
-
-: c> csp cell - dup
-  dup cstack < if ." compile stack underflow" cr
-  cstack to csp -1 error then
-  to csp @ ; compile-only
 
 : begin here >c ; immediate compile-only
 : again c> jmp, ; immediate compile-only
