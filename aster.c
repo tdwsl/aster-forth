@@ -9,7 +9,6 @@ struct aster_word {
     char *s;
     char flags;
     int a;
-    void (*f)(void);
     int end;
 };
 
@@ -33,7 +32,9 @@ int aster_filen = 0;
 unsigned char aster_error = 0;
 unsigned char aster_waitThen = 0;
 unsigned char aster_usedArgs = 0;
-void (*aster_lastFun)(void);
+int aster_lastFun;
+aster_fun aster_functions[ASTER_MAXFUNS];
+int aster_nfunctions = 0;
 
 void aster_getNext(char *buf, int max) {
     int i;
@@ -85,7 +86,17 @@ void aster_printRstack() {
 
 void aster_runAddr(int pc) {
     int psp, prsp;
-    void (*fun)(void);
+    int a;
+
+    if(pc < 0) {
+        pc = ~pc;
+        if(pc >= aster_nfunctions) aster_error = 1;
+        else {
+            aster_lastFun = ~pc;
+            aster_functions[pc]();
+        }
+        return;
+    }
 
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
@@ -95,9 +106,16 @@ void aster_runAddr(int pc) {
 
     do {
         aster_ppc = aster_pc;
-        fun = *(void (**)(void))&aster_dict[aster_pc];
-        aster_pc += ASTER_FUNSZ;
-        fun();
+        a = *(int*)&aster_dict[aster_pc];
+        aster_pc += ASTER_INTSZ;
+        if(a < 0) {
+            a = ~a;
+            if(a >= aster_nfunctions) aster_error = 1;
+            else aster_functions[a]();
+        } else {
+            aster_rstack[aster_rsp++] = aster_pc;
+            aster_pc = a;
+        }
     } while((aster_pc != 0) & (!aster_error));
 }
 
@@ -389,7 +407,7 @@ void aster_f_allot() {
 void aster_f_execute() {
     aster_sassert(1);
     aster_sp--;
-    if(aster_stack[aster_sp] < 0) aster_words[~aster_stack[aster_sp]].f();
+    if(aster_stack[aster_sp] < 0) aster_functions[~aster_stack[aster_sp]]();
     else if(aster_rsp) {
         aster_rstack[aster_rsp++] = aster_pc;
         aster_pc = aster_stack[aster_sp];
@@ -410,64 +428,25 @@ void aster_f_tick() {
 
     w = aster_getNextWord();
     if(!w) return;
-    if(w->flags & ASTER_FUNCTION) aster_stack[aster_sp] = ~(w-aster_words);
-    else aster_stack[aster_sp] = w->a;
+    aster_stack[aster_sp] = w->a;
     aster_sp++;
     aster_soassert(1);
-}
-
-void aster_f_compile() {
-    if(*(int*)&aster_dict[ASTER_STATUS]) {
-        aster_sassert(1);
-        aster_sp--;
-        if(aster_stack[aster_sp] < 0) {
-            *(void (**)(void))&aster_dict[aster_here] =
-              aster_words[~aster_stack[aster_sp]].f;
-            aster_here += ASTER_FUNSZ;
-        } else {
-            *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
-            aster_here += ASTER_FUNSZ;
-            *(int*)&aster_dict[aster_here] = aster_stack[aster_sp];
-            aster_here += ASTER_INTSZ;
-        }
-    } else aster_f_execute();
-}
-
-void aster_f_postpone() {
-    struct aster_word *w;
-
-    w = aster_getNextWord();
-    if(!w) return;
-    if(w->flags & ASTER_IMMEDIATE) {
-        if(w->flags & ASTER_FUNCTION) {
-            *(void (**)(void))&aster_dict[aster_here] = w->f;
-            aster_here += ASTER_FUNSZ;
-        } else {
-            *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
-            aster_here += ASTER_FUNSZ;
-            *(int*)&aster_dict[aster_here] = w->a;
-            aster_here += ASTER_INTSZ;
-        }
-    } else {
-        *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
-        aster_here += ASTER_FUNSZ;
-        if(w->flags & ASTER_FUNCTION)
-            *(int*)&aster_dict[aster_here] = ~(w-aster_words);
-        else
-            *(int*)&aster_dict[aster_here] = w->a;
-        aster_here += ASTER_INTSZ;
-        *(void (**)(void))&aster_dict[aster_here] = aster_f_compile;
-        aster_here += ASTER_FUNSZ;
-    }
 }
 
 struct aster_word *aster_findWordAddr(int a) {
     int i;
 
     for(i = aster_nwords-1; i >= 0; i--)
-        if(!(aster_words[i].flags & ASTER_FUNCTION) && aster_words[i].a == a)
+        if(aster_words[i].a == a)
             return &aster_words[i];
     return 0;
+}
+
+void aster_f_isImmediate() {
+    struct aster_word *w;
+    w = aster_findWordAddr(aster_stack[aster_sp-1]);
+    if(!w) aster_stack[aster_sp-1] = 0;
+    aster_stack[aster_sp-1] = (w->flags & ASTER_IMMEDIATE) ? -1 : 0;
 }
 
 void aster_f_alias() {
@@ -479,70 +458,11 @@ void aster_f_alias() {
     aster_words[aster_nwords].s = aster_nameBufP;
     aster_nameBufP += strlen(aster_nameBufP)+1;
     aster_sp--;
-    if(aster_stack[aster_sp] < 0) {
-        aster_words[aster_nwords].f = aster_words[~aster_stack[aster_sp]].f;
-        aster_words[aster_nwords].flags = ASTER_FUNCTION;
-    } else {
-        aster_words[aster_nwords].a = aster_stack[aster_sp];
-        aster_words[aster_nwords].flags = 0;
-        if((w = aster_findWordAddr(aster_stack[aster_sp])))
-            aster_words[aster_nwords].end = w->end;
-    }
+    aster_words[aster_nwords].a = aster_stack[aster_sp];
+    aster_words[aster_nwords].flags = 0;
+    w = aster_findWordAddr(aster_stack[aster_sp]);
+    aster_words[aster_nwords].end = w ? w->end : 0;
     aster_nwords++;
-}
-
-void aster_f_literal() {
-    aster_sassert(1);
-    if(*(int*)&aster_dict[ASTER_STATUS]) {
-        *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
-        aster_here += ASTER_FUNSZ;
-        *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
-        aster_here += ASTER_INTSZ;
-    }
-}
-
-void aster_f_jmpc() {
-    aster_sassert(1);
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_jmp;
-    aster_here += ASTER_FUNSZ;
-    *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
-    aster_here += ASTER_INTSZ;
-}
-
-void aster_f_jzc() {
-    aster_sassert(1);
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_jz;
-    aster_here += ASTER_FUNSZ;
-    *(int*)&aster_dict[aster_here] = aster_stack[--aster_sp];
-    aster_here += ASTER_INTSZ;
-}
-
-void aster_f_jmps() {
-    aster_sassert(2);
-    *(void (**)(void))&aster_dict[aster_stack[aster_sp-1]] = aster_f_jmp;
-    *(int*)&aster_dict[aster_stack[aster_sp-1]+ASTER_FUNSZ] =
-      aster_stack[aster_sp-2];
-    aster_sp -= 2;
-}
-
-void aster_f_lits() {
-    aster_sassert(2);
-    *(void (**)(void))&aster_dict[aster_stack[aster_sp-1]] = aster_f_lit;
-    *(int*)&aster_dict[aster_stack[aster_sp-1]+ASTER_FUNSZ] =
-      aster_stack[aster_sp-2];
-    aster_sp -= 2;
-}
-
-void aster_f_recurse() {
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_call;
-    aster_here += ASTER_FUNSZ;
-    *(int*)&aster_dict[aster_here] = aster_words[aster_nwords].a;
-    aster_here += ASTER_INTSZ;
-}
-
-void aster_f_exit() {
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_ret;
-    aster_here += ASTER_FUNSZ;
 }
 
 void aster_f_parsec() {
@@ -582,8 +502,8 @@ void aster_f_noname() {
 
 void aster_f_semi() {
     *(int*)&aster_dict[ASTER_STATUS] = 0;
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_ret;
-    aster_here += ASTER_FUNSZ;
+    *(int*)&aster_dict[aster_here] = ~ASTER_RET;
+    aster_here += ASTER_INTSZ;
     if(aster_words[aster_nwords].s)
         aster_words[aster_nwords++].end = aster_here;
     else {
@@ -594,6 +514,11 @@ void aster_f_semi() {
 
 void aster_f_last() {
     aster_stack[aster_sp++] = aster_words[aster_nwords-1].a;
+    aster_soassert(1);
+}
+
+void aster_f_this() {
+    aster_stack[aster_sp++] = aster_words[aster_nwords].a;
     aster_soassert(1);
 }
 
@@ -608,19 +533,9 @@ void aster_f_compileonly() {
 int aster_printAddr(int addr) {
     int i;
     for(i = aster_nwords-1; i >= 0; i--)
-        if(!(aster_words[i].flags & ASTER_FUNCTION)
-          && aster_words[i].a == addr)
+        if(aster_words[i].a == addr)
             return printf("%s ", aster_words[i].s);
     return printf("$%.8X ", addr);
-}
-
-int aster_printFunction(void (*fun)(void)) {
-    int i;
-    for(i = aster_nwords-1; i >= 0; i--)
-        if((aster_words[i].flags & ASTER_FUNCTION)
-          && aster_words[i].f == fun)
-            return printf("%s ", aster_words[i].s);
-    return printf("function $%X ", (unsigned)(size_t)fun);
 }
 
 int aster_printInsAddr(int addr) {
@@ -628,21 +543,19 @@ int aster_printInsAddr(int addr) {
 }
 
 int aster_printIns0(int addr) {
-    void (*fun)(void);
+    int i;
 
-    fun = *(void (**)(void))&aster_dict[addr];
-    if(fun == aster_f_lit)
-        return printf("#%d ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_call)
-        return aster_printAddr(*(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_jmp)
-        return printf("jmp %.8X ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_jz)
-        return printf("jz %.8X ", *(int*)&aster_dict[addr+ASTER_FUNSZ]);
-    else if(fun == aster_f_ret)
-        return printf("ret ");
+    i = *(int*)&aster_dict[addr];
+    if(i == ~ASTER_LIT)
+        return printf("#%d ", *(int*)&aster_dict[addr+ASTER_INTSZ]);
+    else if(i == ~ASTER_JMP)
+        return printf("JMP %.8X ", *(int*)&aster_dict[addr+ASTER_INTSZ]);
+    else if(i == ~ASTER_JZ)
+        return printf("JZ %.8X ", *(int*)&aster_dict[addr+ASTER_INTSZ]);
+    else if(i == ~ASTER_RET)
+        return printf("RET ");
     else
-        return aster_printFunction(*(void (**)(void))&aster_dict[addr]);
+        return aster_printAddr(*(int*)&aster_dict[addr]);
 }
 
 void aster_printIns(int addr) {
@@ -660,8 +573,7 @@ int aster_intIn(int *a, int l, int n) {
 
 void aster_f_see() {
     struct aster_word *w;
-    int i;
-    void (*fun)(void);
+    int i, n;
     int br[200];
     int nbr = 0, x = 0;
 
@@ -672,35 +584,33 @@ void aster_f_see() {
     if(w->flags & ASTER_COMPILEONLY) printf(" (compile-only)");
     printf("\n");
 
-    if(w->flags & ASTER_FUNCTION) {
-        printf("function $%.X\n", (unsigned)(size_t)w->f);
+    if(w->a < 0) {
+        printf("function $%.X\n", (unsigned)(size_t)aster_functions[~w->a]);
         return;
     }
 
-    for(i = w->a; i < w->end; i += ASTER_FUNSZ) {
-        fun = *(void (**)(void))&aster_dict[i];
-        if(fun == aster_f_jmp || fun == aster_f_jz)
-            br[nbr++] = *(int*)&aster_dict[i+ASTER_FUNSZ];
-        if(fun == aster_f_jmp || fun == aster_f_jz
-          || fun == aster_f_call || fun == aster_f_lit)
+    for(i = w->a; i < w->end; i += ASTER_INTSZ) {
+        n = *(int*)&aster_dict[i];
+        if(n == ~ASTER_JMP || n == ~ASTER_JZ)
+            br[nbr++] = *(int*)&aster_dict[i+ASTER_INTSZ];
+        if(n == ~ASTER_JMP || n == ~ASTER_JZ || n == ~ASTER_LIT)
             i += ASTER_INTSZ;
     }
 
     aster_printInsAddr(w->a);
-    for(i = w->a; i < w->end; i += ASTER_FUNSZ) {
+    for(i = w->a; i < w->end; i += ASTER_INTSZ) {
         if(aster_intIn(br, nbr, i) && x) {
             printf("\n");
 	    aster_printInsAddr(i);
             x = 0;
         }
         x += aster_printIns0(i);
-        fun = *(void (**)(void))&aster_dict[i];
-        if(fun == aster_f_jmp || fun == aster_f_jz
-          || fun == aster_f_call || fun == aster_f_lit)
+        n = *(int*)&aster_dict[i];
+        if(n == ~ASTER_JMP || n == ~ASTER_JZ || n == ~ASTER_LIT)
             i += ASTER_INTSZ;
-        if(x >= 60 || fun == aster_f_jmp || fun == aster_f_jz) {
+        if(x >= 60 || n == ~ASTER_JMP || n == ~ASTER_JZ) {
             printf("\n");
-	    aster_printInsAddr(i+ASTER_FUNSZ);
+	    aster_printInsAddr(i+ASTER_INTSZ);
             x = 0;
         }
     }
@@ -711,7 +621,7 @@ void aster_f_words() {
     int i, x;
 
     x = 0;
-    for(i = aster_nwords-1; i >= 0; i--) {
+    for(i = 0; i < aster_nwords; i++) {
         x += strlen(aster_words[i].s)+1;
         if(x >= 80) { printf("\n"); x = strlen(aster_words[i].s)+1; }
         printf("%s ", aster_words[i].s);
@@ -816,24 +726,32 @@ void aster_f_bye() {
 
 void aster_addC(void (*fun)(void), const char *name, char flags) {
     aster_words[aster_nwords].s     = (char*)name;
-    aster_words[aster_nwords].flags = flags|ASTER_FUNCTION;
-    aster_words[aster_nwords].a     = 0;
-    aster_words[aster_nwords++].f   = fun;
+    aster_words[aster_nwords].flags = flags;
+    aster_words[aster_nwords].a     = ~aster_nfunctions;
+    aster_nwords++;
+    aster_functions[aster_nfunctions++] = fun;
 }
 
 void aster_addConstant(int v, const char *name) {
     aster_words[aster_nwords].s     = (char*)name;
     aster_words[aster_nwords].flags = 0;
     aster_words[aster_nwords].a     = aster_here;
-    aster_words[aster_nwords++].f   = 0;
+    aster_nwords++;
 
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_lit;
-    aster_here += ASTER_FUNSZ;
+    *(int*)&aster_dict[aster_here] = ~ASTER_LIT;
+    aster_here += ASTER_INTSZ;
     *(int*)&aster_dict[aster_here] = v;
     aster_here += ASTER_INTSZ;
-    *(void (**)(void))&aster_dict[aster_here] = aster_f_ret;
-    aster_here += ASTER_FUNSZ;
+    *(int*)&aster_dict[aster_here] = ~ASTER_RET;
+    aster_here += ASTER_INTSZ;
     aster_words[aster_nwords-1].end = aster_here;
+}
+
+void aster_addWord(int a, const char *name, int flags) {
+    aster_words[aster_nwords].s     = (char*)name;
+    aster_words[aster_nwords].flags = flags;
+    aster_words[aster_nwords].a     = a;
+    aster_nwords++;
 }
 
 void aster_init(int argc, char **args) {
@@ -848,6 +766,20 @@ void aster_init(int argc, char **args) {
     *(int*)&aster_dict[ASTER_BASE] = 10;
     *(int*)&aster_dict[ASTER_STATUS] = 0;
     *(int*)&aster_dict[ASTER_ARGC] = argc;
+    aster_functions[ASTER_JMP] = aster_f_jmp;
+    aster_functions[ASTER_JZ] = aster_f_jz;
+    aster_functions[ASTER_LIT] = aster_f_lit;
+    aster_functions[ASTER_RET] = aster_f_ret;
+    aster_functions[ASTER_CIN] = aster_f_cin;
+    aster_functions[ASTER_EMIT] = aster_f_emit;
+    aster_nfunctions = ASTER_USER;
+
+    aster_addConstant(~ASTER_JMP, "jmp");
+    aster_addConstant(~ASTER_JZ, "jz");
+    aster_addConstant(~ASTER_LIT, "lit");
+    aster_addConstant(~ASTER_RET, "ret");
+    aster_addWord(~ASTER_CIN, "cin", 0);
+    aster_addWord(~ASTER_EMIT, "emit", 0);
 
     for(i = 0; i < argc; i++) {
         *(int*)&aster_dict[ASTER_START+i*ASTER_INTSZ] = aster_here;
@@ -896,16 +828,8 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_allot, "allot", 0);
     aster_addC(aster_f_execute, "execute", 0);
     aster_addC(aster_f_tick, "'", 0);
-    aster_addC(aster_f_compile, "compile,", ASTER_COMPILEONLY);
-    aster_addC(aster_f_postpone,"postpone",ASTER_COMPILEONLY|ASTER_IMMEDIATE);
+    aster_addC(aster_f_isImmediate, "immediate?", 0);
     aster_addC(aster_f_alias, "alias", 0);
-    aster_addC(aster_f_literal, "literal", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
-    aster_addC(aster_f_jmpc, "jmp,", ASTER_COMPILEONLY);
-    aster_addC(aster_f_jzc,  "jz,",  ASTER_COMPILEONLY);
-    aster_addC(aster_f_jmps, "jmp!", 0);
-    aster_addC(aster_f_lits, "lit!", 0);
-    aster_addC(aster_f_recurse, "recurse", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
-    aster_addC(aster_f_exit, "exit", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_parsec, "parseC", 0);
     aster_addC(aster_f_emit, "emit", 0);
     aster_addC(aster_f_cin, "cin", 0);
@@ -913,6 +837,7 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_noname, ":NONAME", 0);
     aster_addC(aster_f_semi,   ";", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
     aster_addC(aster_f_last,   "last", 0);
+    aster_addC(aster_f_this,   "this", 0);
     aster_addC(aster_f_immediate, "immediate", 0);
     aster_addC(aster_f_compileonly, "compile-only", 0);
     aster_addC(aster_f_see, "see", 0);
@@ -933,7 +858,6 @@ void aster_init(int argc, char **args) {
     aster_addConstant(ASTER_BASE,   "base");
     aster_addConstant(ASTER_STATUS, "status");
     aster_addConstant(ASTER_INTSZ,  "cell");
-    aster_addConstant(ASTER_FUNSZ,  "funsz");
     aster_addConstant(ASTER_ARGC,   "argc");
     aster_addConstant(ASTER_START,  "(args)");
     aster_addConstant(ASTER_DICTSZ, "heap0");
@@ -1041,32 +965,21 @@ void aster_run() {
         if((w = aster_findWord(aster_buf))) {
             if(*(int*)&aster_dict[ASTER_STATUS]) {
                 if(w->flags & ASTER_IMMEDIATE) {
-                    if(w->flags & ASTER_FUNCTION) {
-                        aster_lastFun = w->f;
-                        w->f();
-                    } else aster_runAddr(w->a);
-                } else if(w->flags & ASTER_FUNCTION) {
-                    *(void(**)(void))&aster_dict[aster_here] = w->f;
-                    aster_here += ASTER_FUNSZ;
+                    aster_runAddr(w->a);
                 } else {
-                    *(void(**)(void))&aster_dict[aster_here] = aster_f_call;
-                    aster_here += ASTER_FUNSZ;
                     *(int*)&aster_dict[aster_here] = w->a;
                     aster_here += ASTER_INTSZ;
                 }
             } else if(w->flags & ASTER_COMPILEONLY) {
                 printf("%s is compile only\n", w->s);
                 aster_error = 1;
-            } else if(w->flags & ASTER_FUNCTION) {
-                aster_lastFun = w->f;
-                w->f();
             } else {
                 aster_runAddr(w->a);
             }
         } else if(aster_number(aster_buf, &n)) {
             if(*(int*)&aster_dict[ASTER_STATUS]) {
-                *(void(**)(void))&aster_dict[aster_here] = aster_f_lit;
-                aster_here += ASTER_FUNSZ;
+                *(int*)&aster_dict[aster_here] = ~ASTER_LIT;
+                aster_here += ASTER_INTSZ;
                 *(int*)&aster_dict[aster_here] = n;
                 aster_here += ASTER_INTSZ;
             } else {
@@ -1119,7 +1032,7 @@ void aster_printBacktrace() {
     if(!(aster_lastFun || aster_ppc)) return;
     if(aster_rsp) aster_rstack[aster_rsp++] = aster_pc;
     printf("backtrace:\n");
-    if(aster_lastFun) aster_printFunction(aster_lastFun);
+    if(aster_lastFun) aster_printAddr(aster_lastFun);
     else aster_printIns0(aster_ppc);
     printf("\n");
     for(i = aster_rsp-1; i > 0; i--) {

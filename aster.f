@@ -1,16 +1,38 @@
 
 : [then] ; immediate
 
+: , here ! cell allot ;
+: c, here c! 1 allot ;
+
+: jmp, jmp , , ;
+: jz, jz , , ;
+
+: [ 0 status ! ; immediate
+: ] 1 status ! ;
+: compile? status @ ;
+
+: ['] ' lit , , ; immediate compile-only
+
 : begin r> here >r >r ; immediate compile-only
 : again r> r> jmp, >r ; immediate compile-only
 : until r> r> jz, >r ; immediate compile-only
 : if r> 0 jz, here >r >r ; immediate compile-only
 : then r> here r> cell - ! >r ; immediate compile-only
-: else r> 0 jmp, postpone then here >r >r ; immediate compile-only
+: else 0 jmp, r> here r> cell - ! here >r >r ; immediate compile-only
+: compile, compile? if , else execute then ;
+: lit, compile? if lit , , then ;
+: postpone ' dup immediate? if compile, else lit, ['] compile, compile, then ;
+  immediate compile-only
 ' if alias while immediate compile-only
 : repeat r> r> postpone again >r postpone then >r ; immediate compile-only
 
-: ['] ' postpone literal ; immediate compile-only
+: literal lit, ; immediate compile-only
+: 2literal compile? if swap then lit, lit, ; immediate compile-only
+
+: ]l ] postpone literal ;
+
+: exit ret , ; immediate compile-only
+: recurse this , ; immediate compile-only
 
 : hex 16 base ! ;
 : decimal 10 base ! ;
@@ -45,14 +67,6 @@
 : max 2dup > if drop else nip then ;
 : min 2dup < if drop else nip then ;
 
-: [ 0 status ! ; immediate
-: ] 1 status ! ;
-: ]l ] postpone literal ;
-: compile? status @ ;
-
-: , here ! cell allot ;
-: c, here c! 1 allot ;
-
 : cell+ cell + ;
 : cells cell * ;
 
@@ -63,16 +77,9 @@
 : ( begin parsec dup 41 = swap 0= or until ; immediate
 : \ begin parsec 0= until ; immediate
 
-: (does) ( u -- )
-  last dup funsz cell+ 2* + swap lit!
-  last funsz cell+ + jmp! r> drop ;
+: >body 4 cells + ;
 
-: does>
-  here funsz cell+ 2* + postpone literal postpone (does) ;
-immediate compile-only
-
-: 2literal compile? if swap then
-  postpone literal postpone literal ; immediate compile-only
+: does> r> jmp last 2 cells + ! last 3 cells + ! ;
 
 : create : 0 postpone literal here postpone ; cell dup allot - here swap ! ;
 : variable create cell allot ;
@@ -82,12 +89,10 @@ immediate compile-only
 : 2constant : postpone 2literal ['] 2literal compile,
   postpone ; postpone immediate ;
 : value : postpone literal postpone ; ;
-: to ' funsz + postpone literal postpone ! ; immediate
-
-: >body funsz 2* cell+ cell+ + ;
+: to ' cell+ postpone literal postpone ! ; immediate
 
 ' create alias defer
-: is ' postpone literal postpone jmp! ; immediate
+: is ' postpone literal cell+ postpone ! ; immediate
 
 variable struct-sz
 : begin-structure 0 struct-sz ! create 0 , last >body does> @ ;
@@ -218,17 +223,19 @@ picend value picp
   postpone unloop
   r> ?dup if cell - here swap ! then >r ;
 
+: (loop) r> 2r> 1+ 2dup 2>r <= swap >r ;
+
 : loop r> r> drop
-  postpone 2r> postpone 1+ postpone 2dup postpone 2>r
-  postpone <=  r> jz,
+  postpone (loop) r> jz,
   (end-loop) >r ; immediate compile-only
 
+: (+loop) r> swap 2r> ( n i2 i1 -- )
+  2dup 4 pick + 2dup 2>r
+  <= -rot <= <> nip
+  swap >r ;
+
 : +loop r> r> drop
-  postpone 2r> ( n i2 i1 -- )
-  postpone 2dup 4 postpone literal postpone pick
-  postpone + postpone 2dup postpone 2>r
-  postpone <= postpone -rot postpone <= postpone <> postpone nip
-  r> jz,
+  postpone (+loop) r> jz,
   (end-loop) >r ; immediate compile-only
 
 : leave r>
@@ -253,7 +260,6 @@ cstack value csp
   dup cstack < if ." compile stack underflow" cr
   cstack to csp -1 error then
   to csp @ ; compile-only
-
 
 : case 0 >c ; immediate compile-only
 

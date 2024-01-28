@@ -7,6 +7,7 @@
 #define ASTER_LINEBUFSZ   560
 #define ASTER_NAMEBUFSZ   72000
 #define ASTER_NFILES      48
+#define ASTER_MAXFUNS     900
 
 #define ASTER_IMMEDIATE   1
 #define ASTER_COMPILEONLY 2
@@ -20,12 +21,23 @@
 #define ASTER_ARGC        ASTER_INTSZ*2
 #define ASTER_START       ASTER_INTSZ*3
 
+#define ASTER_LIT         0
+#define ASTER_JMP         1
+#define ASTER_JZ          2
+#define ASTER_RET         3
+#define ASTER_EMIT        4
+#define ASTER_CIN         5
+#define ASTER_USER        6
+
 extern unsigned char aster_dict[];
 extern int aster_stack[];
 extern int aster_rstack[];
 extern unsigned char aster_rsp, aster_sp;
 extern unsigned char aster_error;
 extern unsigned char aster_usedArgs;
+typedef void (*aster_fun)(void);
+extern aster_fun aster_functions[];
+extern int aster_nfunctions;
 
 static const char *aster_sSU = "stack underflow !\n";
 static const char *aster_sSO = "stack overflow !\n";
