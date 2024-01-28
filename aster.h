@@ -14,7 +14,6 @@
 #define ASTER_FUNCTION    4
 
 #define ASTER_INTSZ       (sizeof(int)/sizeof(char))
-#define ASTER_FUNSZ       (sizeof(void*)/sizeof(char))
 
 #define ASTER_BASE        0
 #define ASTER_STATUS      ASTER_INTSZ
