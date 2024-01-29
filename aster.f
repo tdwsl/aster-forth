@@ -25,6 +25,10 @@
   immediate compile-only
 ' if alias while immediate compile-only
 : repeat r> r> postpone again >r postpone then >r ; immediate compile-only
+: for postpone >r r> here >r >r ; immediate compile-only
+: (next) r> r> 1- dup >r swap >r 0< ;
+: rdrop r> r> drop >r ;
+: next postpone (next) r> r> jz, >r postpone rdrop ; immediate compile-only
 
 : literal lit, ; immediate compile-only
 : 2literal compile? if swap then lit, lit, ; immediate compile-only
@@ -91,8 +95,8 @@
 : value : postpone literal postpone ; ;
 : to ' cell+ postpone literal postpone ! ; immediate
 
-' create alias defer
-: is ' postpone literal cell+ postpone ! ; immediate
+: defer create does> execute ;
+: is ' cell+ postpone literal postpone ! ; immediate
 
 variable struct-sz
 : begin-structure 0 struct-sz ! create 0 , last >body does> @ ;
