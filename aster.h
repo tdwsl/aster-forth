@@ -10,8 +10,7 @@
 #define ASTER_MAXFUNS     900
 
 #define ASTER_IMMEDIATE   1
-#define ASTER_COMPILEONLY 2
-#define ASTER_FUNCTION    4
+#define ASTER_FUNCTION    2
 
 #define ASTER_INTSZ       (sizeof(int)/sizeof(char))
 

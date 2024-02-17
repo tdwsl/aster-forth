@@ -7,36 +7,48 @@
 : jmp, jmp , , ;
 : jz, jz , , ;
 
-: [ 0 status ! ; immediate
+: compile-only ; 0 ,
+
+: [ compile-only 0 status ! ; immediate
 : ] 1 status ! ;
 : compile? status @ ;
 
-: ['] ' lit , , ; immediate compile-only
+: bstack 0 ;
+here ' bstack cell + !
+64 cell * allot
+: bsp 0 ;
+here ' bsp cell + !
+cell allot
+bstack bsp !
+: >b bsp @ ! cell bsp +! ;
+: b> [ cell invert 1+ lit , , ] bsp +! bsp @ @ ;
 
-: begin r> here >r >r ; immediate compile-only
-: again r> r> jmp, >r ; immediate compile-only
-: until r> r> jz, >r ; immediate compile-only
-: if r> 0 jz, here >r >r ; immediate compile-only
-: then r> here r> cell - ! >r ; immediate compile-only
-: else 0 jmp, r> here r> cell - ! here >r >r ; immediate compile-only
+: ['] compile-only ' lit , , ; immediate
+
+: begin compile-only here >b ; immediate
+: again compile-only b> jmp, ; immediate
+: until compile-only b> jz, ; immediate
+: if compile-only 0 jz, here >b ; immediate
+: then compile-only here b> cell - ! ; immediate
+: else compile-only 0 jmp, here b> cell - ! here >b ; immediate
 : compile, compile? if , else execute then ;
 : lit, compile? if lit , , then ;
 : postpone ' dup immediate? if compile, else lit, ['] compile, compile, then ;
-  immediate compile-only
-' if alias while immediate compile-only
-: repeat r> r> postpone again >r postpone then >r ; immediate compile-only
-: for postpone >r r> here >r >r ; immediate compile-only
+  immediate
+' if alias while immediate
+: repeat compile-only b> postpone again >b postpone then ; immediate
+: for compile-only postpone >r here >b ; immediate
 : (next) r> r> 1- dup >r swap >r 0< ;
-: rdrop r> r> drop >r ;
-: next postpone (next) r> r> jz, >r postpone rdrop ; immediate compile-only
+: rdrop compile-only r> r> drop >r ;
+: next compile-only postpone (next) b> jz, postpone rdrop ; immediate
 
-: literal lit, ; immediate compile-only
-: 2literal compile? if swap then lit, lit, ; immediate compile-only
+: literal lit, ; immediate
+: 2literal compile? if swap then lit, lit, ; immediate
 
 : ]l ] postpone literal ;
 
-: exit ret , ; immediate compile-only
-: recurse this , ; immediate compile-only
+: exit compile-only ret , ; immediate
+: recurse compile-only this , ; immediate
 
 : hex 16 base ! ;
 : decimal 10 base ! ;
@@ -56,8 +68,8 @@
 : / /mod nip ;
 : mod /mod drop ;
 
-: 2>r r> -rot swap >r >r >r ; compile-only
-: 2r> r> r> r> swap rot >r ; compile-only
+: 2>r r> -rot swap >r >r >r ;
+: 2r> r> r> r> swap rot >r ;
 
 : ?dup dup if dup then ;
 
@@ -78,8 +90,8 @@
 : 2@ dup cell+ @ swap @ ;
 : 2, , , ;
 
-: ( begin parsec dup 41 = swap 0= or until ; immediate
-: \ begin parsec 0= until ; immediate
+: ( begin parsec dup 41 = swap 10 <= or until ; immediate
+: \ begin parsec 10 <= until ; immediate
 
 : >body 4 cells + ;
 
@@ -97,6 +109,9 @@
 
 : defer create does> execute ;
 : is ' cell+ postpone literal postpone ! ; immediate
+
+: (is!) jmp over ! cell+ ! ;
+: is! ' postpone literal postpone (is!) ; immediate
 
 variable struct-sz
 : begin-structure 0 struct-sz ! create 0 , last >body does> @ ;
@@ -142,7 +157,7 @@ heap0 value heap
   dup >r heap-save heap r> ;
 
 : word ( c -- a )
-  >r here 1+ begin parsec dup r@ <> over 0<> and while
+  >r here 1+ begin parsec dup r@ <> over 10 > and while
     over c! 1+
   repeat
   r> 2drop
@@ -153,7 +168,7 @@ heap0 value heap
   begin dup 0> while over c@ emit >r 1+ r> 1- repeat 2drop ;
 
 : char parse-name drop c@ ;
-: [char] char postpone literal ; immediate compile-only
+: [char] compile-only char postpone literal ; immediate
 
 : ." [char] " parse-until compile? if str, postpone 2literal then
   postpone type ; immediate
@@ -210,73 +225,89 @@ picend value picp
   access-args
   cells (args) + @ strlen ;
 
-: do postpone 2>r
-  r> 0 >r 0 >r here >r -1 >r >r ; immediate compile-only
+: do compile-only postpone 2>r
+  0 >b 0 >b here >b -1 >b ; immediate
 
-: ?do postpone 2dup postpone <= postpone if postpone 2drop
+: ?do compile-only postpone 2dup postpone <= postpone if postpone 2drop
   0 jmp, here postpone then
   postpone 2>r
-  r> swap >r 0 >r here >r -1 >r >r ; immediate compile-only
+  >b 0 >b here >b -1 >b ; immediate
 
-: unloop r> 2r> 2drop >r ; compile-only
+: unloop r> 2r> 2drop >r ;
 
-: (end-loop) r>
-  r> begin ?dup while
-    here r> cell - !
+: (end-loop)
+  b> begin ?dup while
+    here b> cell - !
   1- repeat
   postpone unloop
-  r> ?dup if cell - here swap ! then >r ;
+  b> ?dup if cell - here swap ! then ;
 
 : (loop) r> 2r> 1+ 2dup 2>r <= swap >r ;
 
-: loop r> r> drop
-  postpone (loop) r> jz,
-  (end-loop) >r ; immediate compile-only
+: loop compile-only b> drop
+  postpone (loop) b> jz,
+  (end-loop) ; immediate
 
 : (+loop) r> swap 2r> ( n i2 i1 -- )
   2dup 4 pick + 2dup 2>r
   <= -rot <= <> nip
   swap >r ;
 
-: +loop r> r> drop
-  postpone (+loop) r> jz,
-  (end-loop) >r ; immediate compile-only
+: +loop compile-only b> drop
+  postpone (+loop) b> jz,
+  (end-loop) ; immediate
 
-: leave r>
-  0 begin 1+ r> swap over -1 = until
-  0 jmp, r> r> 1+ here >r >r >r
-  begin swap >r 1- dup 0= until drop >r ; immediate compile-only
+: leave compile-only
+  0 begin 1+ b> swap over -1 = until
+  0 jmp, b> b> 1+ here >b >b >b
+  begin swap >b 1- dup 0= until drop ; immediate
 
-' r@ alias i compile-only
+' r@ alias i
 
-: j r> r> r> r@ -rot >r >r swap >r ; compile-only
+: j r> r> r> r@ -rot >r >r swap >r ;
 
-create cstack 200 cells allot
-cstack 200 + constant cstacktop
+:noname
+  compile? 0= if
+    ." word is compile only" cr -1 error then ; is! compile-only
+
+:noname
+  compile-only
+  bsp @ ['] bsp >= if
+    ." branch stack overflow" cr bstack bsp ! -1 error then
+  bsp @ ! cell bsp +! ; is! >b
+
+:noname
+  compile-only
+  bsp @ bstack <= if
+    ." branch stack underflow" cr bstack bsp ! -1 error then
+  [ cell negate ]l bsp +! bsp @ @ ; is! b>
+
+create cstack 64 cells allot
+cstack 64 cells + constant cstacktop
 cstack value csp
 
-: >c csp
+: >c compile-only csp
   dup cstacktop >= if ." compile stack overflow" cr
   cstack to csp -1 error then
-  ! csp cell+ to csp ; compile-only
+  ! csp cell+ to csp ;
 
-: c> csp cell - dup
+: c> compile-only csp cell - dup
   dup cstack < if ." compile stack underflow" cr
   cstack to csp -1 error then
-  to csp @ ; compile-only
+  to csp @ ;
 
-: case 0 >c ; immediate compile-only
+: case compile-only 0 >c ; immediate
 
-: of
+: of compile-only
   postpone over postpone = r> postpone if >r postpone drop
-  c> 1+ >c ; immediate compile-only
+  c> 1+ >c ; immediate
 
-: endof r> postpone else >r ; immediate compile-only
+: endof compile-only r> postpone else >r ; immediate
 
-: endcase postpone drop
-  r> c> begin ?dup while 1- postpone then repeat >r ; immediate compile-only
+: endcase compile-only postpone drop
+  r> c> begin ?dup while 1- postpone then repeat >r ; immediate
 
-: str= ( a u a u -- )
+: str= ( a u a u -- ) compile-only
   rot over <> if 2drop drop 0 exit then
   0 ?do over i + c@ over i + c@ <> if 2drop unloop 0 exit then loop
   2drop -1 ;
@@ -342,11 +373,11 @@ create pad pad-size allot
 
 \ redefine looping to allow multiple whiles
 
-: begin here >c ; immediate compile-only
-: again c> jmp, ; immediate compile-only
-: until c> jz, ; immediate compile-only
+: begin compile-only here >c ; immediate
+: again compile-only c> jmp, ; immediate
+: until compile-only c> jz, ; immediate
 
-: repeat r> c> jmp, here r> cell - ! >r ; immediate compile-only
+: repeat compile-only c> jmp, here b> cell - ! ; immediate
 
 \ ansi escape
 

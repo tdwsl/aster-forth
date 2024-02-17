@@ -49,21 +49,6 @@ void aster_getNext(char *buf, int max) {
     }
 }
 
-int aster_streq(char *s1, char *s2) {
-    char c1, c2;
-
-    do {
-        c1 = *s1;
-        c2 = *s2;
-        if(c1 >= 'a' && c1 <= 'z') c1 += 'A'-'a';
-        if(c2 >= 'a' && c2 <= 'z') c2 += 'A'-'a';
-        if(c1 != c2) return 0;
-        s1++; s2++;
-    } while(c1);
-
-    return 1;
-}
-
 void aster_printIns(int addr);
 
 int aster_printAddr(int addr);
@@ -85,7 +70,6 @@ void aster_printRstack() {
 }
 
 void aster_runAddr(int pc) {
-    int psp, prsp;
     int a;
 
     if(pc < 0) {
@@ -101,9 +85,6 @@ void aster_runAddr(int pc) {
     aster_pc = pc;
     aster_rstack[aster_rsp++] = 0;
 
-    prsp = aster_rsp;
-    psp  = aster_sp;
-
     do {
         aster_ppc = aster_pc;
         a = *(int*)&aster_dict[aster_pc];
@@ -117,13 +98,17 @@ void aster_runAddr(int pc) {
             aster_pc = a;
         }
     } while((aster_pc != 0) & (!aster_error));
+
+    if(aster_rsp != 0 && !aster_error) {
+        printf("%s", aster_sOB); aster_error = 1;
+    }
 }
 
 struct aster_word *aster_findWord(char *s) {
     int i;
 
     for(i = aster_nwords-1; i >= 0; i--)
-        if(aster_streq(s, aster_words[i].s))
+        if(!strcasecmp(s, aster_words[i].s))
             return &aster_words[i];
 
     return 0;
@@ -350,7 +335,7 @@ void aster_f_pick() {
 }
 
 void aster_f_roll() {
-    int i, j, r, t;
+    int i, r, t;
     aster_sassert(1);
     r = aster_stack[--aster_sp];
     if(r <= 0) return;
@@ -526,10 +511,6 @@ void aster_f_immediate() {
     aster_words[aster_nwords-1].flags |= ASTER_IMMEDIATE;
 }
 
-void aster_f_compileonly() {
-    aster_words[aster_nwords-1].flags |= ASTER_COMPILEONLY;
-}
-
 int aster_printAddr(int addr) {
     int i;
     for(i = aster_nwords-1; i >= 0; i--)
@@ -581,7 +562,6 @@ void aster_f_see() {
     if(!w) return;
     printf("%s", w->s);
     if(w->flags & ASTER_IMMEDIATE) printf(" (immediate)");
-    if(w->flags & ASTER_COMPILEONLY) printf(" (compile-only)");
     printf("\n");
 
     if(w->a < 0) {
@@ -787,9 +767,9 @@ void aster_init(int argc, char **args) {
         aster_here += strlen(args[i])+1;
     }
 
-    aster_addC(aster_f_rph, ">r", ASTER_COMPILEONLY);
-    aster_addC(aster_f_rpl, "r>", ASTER_COMPILEONLY);
-    aster_addC(aster_f_rat, "r@", ASTER_COMPILEONLY);
+    aster_addC(aster_f_rph, ">r", 0);
+    aster_addC(aster_f_rpl, "r>", 0);
+    aster_addC(aster_f_rat, "r@", 0);
     aster_addC(aster_f_add, "+",   0);
     aster_addC(aster_f_sub, "-",   0);
     aster_addC(aster_f_and, "and", 0);
@@ -835,11 +815,10 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_cin, "cin", 0);
     aster_addC(aster_f_colon,  ":", 0);
     aster_addC(aster_f_noname, ":NONAME", 0);
-    aster_addC(aster_f_semi,   ";", ASTER_COMPILEONLY|ASTER_IMMEDIATE);
+    aster_addC(aster_f_semi,   ";", ASTER_IMMEDIATE);
     aster_addC(aster_f_last,   "last", 0);
     aster_addC(aster_f_this,   "this", 0);
     aster_addC(aster_f_immediate, "immediate", 0);
-    aster_addC(aster_f_compileonly, "compile-only", 0);
     aster_addC(aster_f_see, "see", 0);
     aster_addC(aster_f_words, "words", 0);
     aster_addC(aster_f_include, "include", 0);
@@ -958,7 +937,7 @@ void aster_run() {
         if(!(*aster_buf)) return;
 
         if(aster_waitThen) {
-            if(aster_streq(aster_buf, "[then]")) aster_waitThen = 0;
+            if(!strcasecmp(aster_buf, "[then]")) aster_waitThen = 0;
             continue;
         }
 
@@ -970,9 +949,6 @@ void aster_run() {
                     *(int*)&aster_dict[aster_here] = w->a;
                     aster_here += ASTER_INTSZ;
                 }
-            } else if(w->flags & ASTER_COMPILEONLY) {
-                printf("%s is compile only\n", w->s);
-                aster_error = 1;
             } else {
                 aster_runAddr(w->a);
             }
