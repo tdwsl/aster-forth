@@ -87,6 +87,7 @@ void aster_runAddr(int pc) {
 
     do {
         aster_ppc = aster_pc;
+        aster_bassert(aster_pc);
         a = *(int*)&aster_dict[aster_pc];
         aster_pc += ASTER_INTSZ;
         if(a < 0) {

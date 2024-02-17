@@ -273,14 +273,14 @@ picend value picp
 :noname
   compile-only
   bsp @ ['] bsp >= if
-    ." branch stack overflow" cr bstack bsp ! -1 error then
-  bsp @ ! cell bsp +! ; is! >b
+    ." branch stack overflow" cr bstack bsp ! -1 error
+  else bsp @ ! cell bsp +! then ; is! >b
 
 :noname
   compile-only
   bsp @ bstack <= if
-    ." branch stack underflow" cr bstack bsp ! -1 error then
-  [ cell negate ]l bsp +! bsp @ @ ; is! b>
+    ." branch stack underflow" cr bstack bsp ! -1 error
+  else [ cell negate ]l bsp +! bsp @ @ then ; is! b>
 
 create cstack 64 cells allot
 cstack 64 cells + constant cstacktop
@@ -307,7 +307,7 @@ cstack value csp
 : endcase compile-only postpone drop
   r> c> begin ?dup while 1- postpone then repeat >r ; immediate
 
-: str= ( a u a u -- ) compile-only
+: str= ( a u a u -- )
   rot over <> if 2drop drop 0 exit then
   0 ?do over i + c@ over i + c@ <> if 2drop unloop 0 exit then loop
   2drop -1 ;
