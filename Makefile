@@ -1,6 +1,6 @@
 
 CC=gcc
-ARGS=-O2 -Wall
+ARGS=-O2
 
 aster: aster.c makeboot aster.f
 	./makeboot
