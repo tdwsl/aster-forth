@@ -34,11 +34,10 @@ Words can be added using either aster_addConstant or aster_addC.
 
 An example of aster_addC would be:
 
-    aster_addC(func, "Fun", ASTER_IMMEDIATE|ASTER_COMPILEONLY);
+    aster_addC(func, "Fun", ASTER_IMMEDIATE);
 
-This would create the word Fun using the C function "func" that is both
-immediate and compile-only. To create a word that is neither immediate nor
-compile-only, just use zero.
+This would create the word Fun using the C function "func" that is immediate.
+To create a word that is not immediate, just use zero.
 
 Words should take no arguments and return void. To access the top of each
 stack, use aster_stack[aster_sp-1] and aster_rstack[aster_rsp-1]. The macros
