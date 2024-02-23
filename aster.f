@@ -313,6 +313,8 @@ cstack value csp
   0 ?do over i + c@ over i + c@ <> if 2drop unloop 0 exit then loop
   2drop -1 ;
 
+32 word key find nip dup 0= [if]
+
 : key cin begin cin 10 = until ;
 
 : accept ( a u -- u )
@@ -322,6 +324,20 @@ cstack value csp
     then over i + c!
   loop
   drop r> ;
+
+[then] [if]
+
+: accept ( a u -- u )
+  >r 0 >r begin
+    key dup 10 = over -1 = or if
+      2drop r> r> drop exit
+    then
+    dup 127 = if drop i if 8 emit 32 emit 8 emit r> 1- >r then
+    else r> r@ over >r < if
+      dup emit over i + c! r> 1+ >r then then
+  again ;
+
+[then]
 
 : throw if ." throw" cr -1 error then ;
 

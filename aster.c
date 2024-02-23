@@ -5,6 +5,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef ASTER_TERMIOS
+#include <termios.h>
+
+void aster_f_getch() {
+    struct termios term, old;
+    tcgetattr(0, &old);
+    memcpy(&term, &old, sizeof(struct termios));
+    term.c_lflag &= ~ICANON;
+    term.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSANOW, &term);
+
+    aster_stack[aster_sp++] = getchar();
+
+    tcsetattr(0, TCSANOW, &old);
+}
+#endif
+
 struct aster_word {
     char *s;
     char flags;
@@ -435,6 +452,17 @@ void aster_f_isImmediate() {
     aster_stack[aster_sp-1] = (w->flags & ASTER_IMMEDIATE) ? -1 : 0;
 }
 
+void aster_f_find() {
+    char buf[256];
+    struct aster_word *w;
+    strncpy(buf, &aster_dict[aster_stack[aster_sp-1]+1],
+            (unsigned)aster_dict[aster_stack[aster_sp-1]]);
+    if(w = aster_findWord(buf)) {
+        aster_stack[aster_sp-1] = w->a;
+        aster_stack[aster_sp++] = (w->flags&ASTER_IMMEDIATE)?1:-1;
+    } else aster_stack[aster_sp++] = 0;
+}
+
 void aster_f_alias() {
     struct aster_word *w;
 
@@ -810,12 +838,13 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_execute, "execute", 0);
     aster_addC(aster_f_tick, "'", 0);
     aster_addC(aster_f_isImmediate, "immediate?", 0);
+    aster_addC(aster_f_find, "find", 0);
     aster_addC(aster_f_alias, "alias", 0);
     aster_addC(aster_f_parsec, "parseC", 0);
     aster_addC(aster_f_emit, "emit", 0);
     aster_addC(aster_f_cin, "cin", 0);
     aster_addC(aster_f_colon,  ":", 0);
-    aster_addC(aster_f_noname, ":NONAME", 0);
+    aster_addC(aster_f_noname, ":noname", 0);
     aster_addC(aster_f_semi,   ";", ASTER_IMMEDIATE);
     aster_addC(aster_f_last,   "last", 0);
     aster_addC(aster_f_this,   "this", 0);
@@ -834,6 +863,10 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_error, "error", 0);
     aster_addC(aster_f_number, "number", 0);
     aster_addC(aster_f_bye, "bye", 0);
+
+#ifdef ASTER_TERMIOS
+    aster_addC(aster_f_getch, "key", 0);
+#endif
 
     aster_addConstant(ASTER_BASE,   "base");
     aster_addConstant(ASTER_STATUS, "status");
