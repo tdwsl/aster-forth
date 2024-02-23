@@ -157,8 +157,9 @@ heap0 value heap
   dup >r heap-save heap r> ;
 
 : word ( c -- a )
-  >r here 1+ begin parsec dup r@ <> over 10 > and while
-    over c! 1+
+  >r here 1+ begin
+  dup here 1+ = parsec dup r@ <> rot or over 10 > and while
+    dup r@ <> if over c! 1+ else drop then
   repeat
   r> 2drop
   here - 1- here c!
