@@ -39,7 +39,7 @@ bstack bsp !
 : repeat compile-only b> postpone again >b postpone then ; immediate
 : for compile-only postpone >r here >b ; immediate
 : (next) r> r> 1- dup >r swap >r 0< ;
-: rdrop compile-only r> r> drop >r ;
+: rdrop r> r> drop >r ;
 : next compile-only postpone (next) b> jz, postpone rdrop ; immediate
 
 : literal lit, ; immediate
