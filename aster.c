@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef ASTER_TERMIOS
 #include <termios.h>
@@ -91,8 +92,9 @@ void aster_runAddr(int pc) {
 
     if(pc < 0) {
         pc = ~pc;
-        if(pc >= aster_nfunctions) aster_error = 1;
-        else {
+        if(pc >= aster_nfunctions) {
+            strcpy(aster_buf, "invalid function\n"); aster_error = 1;
+        } else {
             aster_lastFun = ~pc;
             aster_functions[pc]();
         }
@@ -109,8 +111,9 @@ void aster_runAddr(int pc) {
         aster_pc += ASTER_INTSZ;
         if(a < 0) {
             a = ~a;
-            if(a >= aster_nfunctions) aster_error = 1;
-            else aster_functions[a]();
+            if(a >= aster_nfunctions) {
+                strcpy(aster_buf, "invalid function\n"); aster_error = 1;
+            } else aster_functions[a]();
         } else {
             aster_rstack[aster_rsp++] = aster_pc;
             aster_pc = a;
@@ -118,7 +121,7 @@ void aster_runAddr(int pc) {
     } while((aster_pc != 0) & (!aster_error));
 
     if(aster_rsp != 0 && !aster_error) {
-        printf("%s", aster_sOB); aster_error = 1;
+        sprintf(aster_buf, "%s", aster_sOB); aster_error = 1;
     }
 }
 
@@ -145,6 +148,7 @@ void aster_f_jmp() {
 }
 
 void aster_f_jz() {
+    aster_sassert(1);
     if(aster_stack[--aster_sp]) aster_pc += ASTER_INTSZ;
     else aster_pc = *(int*)&aster_dict[aster_pc];
 }
@@ -215,9 +219,14 @@ void aster_f_mul() {
 void aster_f_div() {
     int t;
     aster_sassert(2);
-    t = aster_stack[aster_sp-2] / aster_stack[aster_sp-1];
-    aster_stack[aster_sp-2] %= aster_stack[aster_sp-1];
-    aster_stack[aster_sp-1] = t;
+    if(aster_stack[aster_sp-1]) {
+        t = aster_stack[aster_sp-2] / aster_stack[aster_sp-1];
+        aster_stack[aster_sp-2] %= aster_stack[aster_sp-1];
+        aster_stack[aster_sp-1] = t;
+    } else {
+        sprintf(aster_buf, "divide by zero\n");
+        aster_error = 1;
+    }
 }
 
 void aster_f_inc() {
@@ -422,7 +431,7 @@ struct aster_word *aster_getNextWord() {
 
     aster_getNext(aster_buf, ASTER_BUFSZ);
     w = aster_findWord(aster_buf);
-    if(!w) { printf("%s ?\n", aster_buf); aster_error = 1; }
+    if(!w) { strcat(aster_buf, " ?\n"); aster_error = 1; }
     return w;
 }
 
@@ -708,7 +717,20 @@ void aster_f_marker() {
 
 void aster_f_error() {
     aster_sassert(1);
+    *aster_buf = 0;
     aster_error = aster_stack[--aster_sp];
+}
+
+void aster_resetStacks();
+
+void aster_f_catch() {
+    int rsp;
+    aster_sassert(1);
+    rsp = aster_rsp;
+    aster_execute(aster_stack[--aster_sp]);
+    if(aster_error) {
+        aster_resetStacks(); aster_rsp = rsp; aster_stack[aster_sp++] = -1;
+    } else aster_stack[aster_sp++] = 0;
 }
 
 int aster_number(char *s, int *n);
@@ -725,6 +747,23 @@ void aster_f_number() {
         aster_sp--;
         aster_stack[aster_sp-1] = 0;
     }
+}
+
+void aster_f_evaluate() {
+    char buf[1024];
+    aster_sassert(2);
+    strncpy(buf,
+        &aster_dict[aster_stack[aster_sp-2]], aster_stack[aster_sp-1]);
+    buf[aster_stack[aster_sp-1]] = 0;
+    aster_runString(buf);
+}
+
+void aster_f_time() {
+    time_t t;
+    t = time(0);
+    aster_stack[aster_sp++] = t;
+    aster_stack[aster_sp++] = t>>(sizeof(int)*8);
+    aster_soassert(2);
 }
 
 void aster_f_bye() {
@@ -779,16 +818,12 @@ void aster_init(int argc, char **args) {
     aster_functions[ASTER_JZ] = aster_f_jz;
     aster_functions[ASTER_LIT] = aster_f_lit;
     aster_functions[ASTER_RET] = aster_f_ret;
-    aster_functions[ASTER_CIN] = aster_f_cin;
-    aster_functions[ASTER_EMIT] = aster_f_emit;
     aster_nfunctions = ASTER_USER;
 
     aster_addConstant(~ASTER_JMP, "jmp");
     aster_addConstant(~ASTER_JZ, "jz");
     aster_addConstant(~ASTER_LIT, "lit");
     aster_addConstant(~ASTER_RET, "ret");
-    aster_addWord(~ASTER_CIN, "cin", 0);
-    aster_addWord(~ASTER_EMIT, "emit", 0);
 
     for(i = 0; i < argc; i++) {
         *(int*)&aster_dict[ASTER_START+i*ASTER_INTSZ] = aster_here;
@@ -861,7 +896,10 @@ void aster_init(int argc, char **args) {
     aster_addC(aster_f_accessArgs, "access-args", 0);
     aster_addC(aster_f_marker, "marker!", 0);
     aster_addC(aster_f_error, "error", 0);
+    aster_addC(aster_f_catch, "catch", 0);
     aster_addC(aster_f_number, "number", 0);
+    aster_addC(aster_f_evaluate, "evaluate", 0);
+    aster_addC(aster_f_time, "time", 0);
     aster_addC(aster_f_bye, "bye", 0);
 
 #ifdef ASTER_TERMIOS
@@ -959,6 +997,8 @@ int aster_number(char *s, int *n) {
     return 1;
 }
 
+void aster_printError();
+
 void aster_run() {
     int n;
     struct aster_word *w;
@@ -996,10 +1036,12 @@ void aster_run() {
                 aster_stack[aster_sp++] = n;
             }
         } else {
-            printf("%s ?\n", aster_buf);
+            strcat(aster_buf, " ?\n");
             aster_error = 1;
         }
     }
+
+    if(aster_error) aster_printError();
 }
 
 void aster_runFile(const char *filename) {
@@ -1009,7 +1051,7 @@ void aster_runFile(const char *filename) {
 
     fp = fopen(filename, "r");
     if(!fp) {
-        printf("failed to open %s\n", filename);
+        sprintf(aster_buf, "failed to open %s\n", filename);
         aster_error = 1;
         return;
     }
@@ -1052,6 +1094,21 @@ void aster_printBacktrace() {
     }
 }
 
+void aster_printError() {
+    printf("error: %s", aster_buf);
+    aster_printBacktrace();
+}
+
+void aster_resetStacks() {
+    aster_sp = 0;
+    aster_rsp = 0;
+    if(*(int*)&aster_dict[ASTER_STATUS]) {
+        aster_here = aster_words[aster_nwords].a;
+        *(int*)&aster_dict[ASTER_STATUS] = 0;
+    }
+    aster_error = 0;
+}
+
 void aster_runStdin() {
     char buf[ASTER_LINEBUFSZ];
     char *p;
@@ -1059,18 +1116,7 @@ void aster_runStdin() {
     printf("  ok\n");
     p = buf;
     for(;;) {
-        if(aster_error) {
-            printf("error\n");
-            aster_printBacktrace();
-            aster_sp = 0;
-            aster_rsp = 0;
-            if(*(int*)&aster_dict[ASTER_STATUS]) {
-                aster_here = aster_words[aster_nwords].a;
-                *(int*)&aster_dict[ASTER_STATUS] = 0;
-            }
-            aster_error = 0;
-        }
-
+        if(aster_error) aster_resetStacks();
         *p = fgetc(stdin);
         if(*p == EOF) {
             if(p != buf) { *p = 0; aster_runString(buf); }

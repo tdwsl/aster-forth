@@ -23,9 +23,7 @@
 #define ASTER_JMP         1
 #define ASTER_JZ          2
 #define ASTER_RET         3
-#define ASTER_EMIT        4
-#define ASTER_CIN         5
-#define ASTER_USER        6
+#define ASTER_USER        4
 
 extern unsigned char aster_dict[];
 extern int aster_stack[];
@@ -44,17 +42,21 @@ static const char *aster_sRO = "return stack overflow !\n";
 static const char *aster_sOB = "invalid memory address\n";
 
 #define aster_sassert(S) if(aster_sp < (S)) { \
-    printf("%s", aster_sSU); aster_error = 1; return; }
+    sprintf(aster_buf, "%s", aster_sSU); aster_error = 1; return; }
 #define aster_soassert(S) if(aster_sp < (S)) { \
-    printf("%s", aster_sSO); aster_error = 1; return; }
+    sprintf(aster_buf, "%s", aster_sSO); aster_error = 1; return; }
 
 #define aster_rassert(S) if(aster_rsp < (S)) { \
-    printf("%s", aster_sRU); aster_error = 1; return; }
+    sprintf(aster_buf, "%s", aster_sRU); aster_error = 1; return; }
 #define aster_roassert(S) if(aster_rsp < (S)) { \
-    printf("%s", aster_sRO); aster_error = 1; return; }
+    sprintf(aster_buf, "%s", aster_sRO); aster_error = 1; return; }
 
 #define aster_bassert(A) if((A) < 0 || (A) >= ASTER_DICTSZ) { \
-    printf("%s", aster_sOB); aster_error = 1; return; }
+    sprintf(aster_buf, "%s", aster_sOB); aster_error = 1; return; }
+
+#define aster_execute(A) aster_runAddr(A)
+
+extern char aster_buf[];
 
 void aster_init(int argc, char **args);
 void aster_runFile(const char *filename);

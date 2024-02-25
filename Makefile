@@ -2,9 +2,9 @@
 CC=gcc
 ARGS=-O2
 
-aster: aster.c makeboot aster.f
+aster: aster.c makeboot aster.f aster.h
 	./makeboot
-	$(CC) -c $(ARGS) aster.c
+	$(CC) -c $(ARGS) aster.c -DASTER_TERMIOS
 	$(CC) $(ARGS) aster.o main.c -o aster
 
 makeboot: makeboot.c
