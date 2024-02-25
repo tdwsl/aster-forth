@@ -465,7 +465,8 @@ void aster_f_find() {
     char buf[256];
     struct aster_word *w;
     strncpy(buf, &aster_dict[aster_stack[aster_sp-1]+1],
-            (unsigned)aster_dict[aster_stack[aster_sp-1]]);
+            (unsigned char)aster_dict[aster_stack[aster_sp-1]]);
+    buf[(unsigned char)aster_dict[aster_stack[aster_sp-1]]] = 0;
     if(w = aster_findWord(buf)) {
         aster_stack[aster_sp-1] = w->a;
         aster_stack[aster_sp++] = (w->flags&ASTER_IMMEDIATE)?1:-1;
