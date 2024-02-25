@@ -1057,7 +1057,7 @@ void aster_runFile(const char *filename) {
     }
 
     p = buf;
-    while(!feof(fp)) {
+    while(!feof(fp) && !aster_error) {
         *p = fgetc(fp);
         if(*p == EOF || *p == '\n' || p-buf >= ASTER_LINEBUFSZ-2) {
             if(p != buf) { *p = 0; aster_runString(buf); p = buf; }
