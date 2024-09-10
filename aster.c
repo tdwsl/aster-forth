@@ -9,7 +9,7 @@
 #ifdef ASTER_TERMIOS
 #include <termios.h>
 
-void aster_f_getch() {
+static void f_getch() {
     struct termios term, old;
     tcgetattr(0, &old);
     memcpy(&term, &old, sizeof(struct termios));
@@ -21,6 +21,41 @@ void aster_f_getch() {
 
     tcsetattr(0, TCSANOW, &old);
 }
+
+#endif
+
+#ifdef ASTER_CONIO
+#include <conio.h>
+
+static void f_getch() {
+    aster_stack[aster_sp++] = getch();
+}
+
+static void f_atxy() {
+    aster_sassert(2);
+    gotoxy(aster_stack[aster_sp-2], aster_stack[aster_sp-1]);
+    aster_sp -= 2;
+}
+
+#endif
+
+#ifdef ASTER_WIN32
+
+#include <windows.h>
+
+static void f_getch() {
+    DWORD mode, cc;
+    TCHAR c = 0;
+    HANDLE h = GetStdHandle( STD_INPUT_HANDLE );
+    if(h) {
+        GetConsoleMode(h, &mode);
+        SetConsoleMode(h, mode&~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT));
+        ReadConsole(h, &c, 1, &cc, NULL);
+        SetConsoleMode(h, mode);
+    }
+    aster_stack[aster_sp++] = c;
+}
+
 #endif
 
 struct aster_word {
@@ -33,7 +68,6 @@ struct aster_word {
 unsigned char aster_dict[ASTER_DICTSZ];
 int aster_stack[256];
 int aster_rstack[256];
-int aster_cstack[256];
 unsigned char aster_sp=0, aster_rsp=0;
 int aster_here = 0;
 int aster_pc, aster_ppc;
@@ -41,18 +75,17 @@ char aster_buf[ASTER_BUFSZ];
 struct aster_word aster_words[ASTER_MAXWORDS];
 int aster_nwords = 0;
 FILE *aster_fp;
-char aster_nameBuf[ASTER_NAMEBUFSZ];
-char *aster_nameBufP = aster_nameBuf;
+static char nameBuf[ASTER_NAMEBUFSZ];
+static char *nameBufP = nameBuf;
 char *aster_string;
 const char *aster_fileModes[] = { "r", "w", "rw", "rb", "wb", "rwb", };
 FILE *aster_files[ASTER_NFILES];
 int aster_filen = 0;
 unsigned char aster_error = 0;
-unsigned char aster_waitThen = 0;
 unsigned char aster_usedArgs = 0;
 int aster_lastFun;
-aster_fun aster_functions[ASTER_MAXFUNS];
-int aster_nfunctions = 0;
+static aster_fun functions[ASTER_MAXFUNS];
+static int nfunctions = 0;
 
 void aster_getNext(char *buf, int max) {
     int i;
@@ -92,11 +125,11 @@ void aster_runAddr(int pc) {
 
     if(pc < 0) {
         pc = ~pc;
-        if(pc >= aster_nfunctions) {
+        if(pc >= nfunctions) {
             strcpy(aster_buf, "invalid function\n"); aster_error = 1;
         } else {
             aster_lastFun = ~pc;
-            aster_functions[pc]();
+            functions[pc]();
         }
         return;
     }
@@ -111,9 +144,9 @@ void aster_runAddr(int pc) {
         aster_pc += ASTER_INTSZ;
         if(a < 0) {
             a = ~a;
-            if(a >= aster_nfunctions) {
+            if(a >= nfunctions) {
                 strcpy(aster_buf, "invalid function\n"); aster_error = 1;
-            } else aster_functions[a]();
+            } else functions[a]();
         } else {
             aster_rstack[aster_rsp++] = aster_pc;
             aster_pc = a;
@@ -137,86 +170,86 @@ struct aster_word *aster_findWord(char *s) {
 
 /*** DICTIONARY ***/
 
-void aster_f_lit() {
+static void f_lit() {
     aster_stack[aster_sp++] = *(int*)&aster_dict[aster_pc];
     aster_pc += ASTER_INTSZ;
     aster_soassert(1);
 }
 
-void aster_f_jmp() {
+static void f_jmp() {
     aster_pc = *(int*)&aster_dict[aster_pc];
 }
 
-void aster_f_jz() {
+static void f_jz() {
     aster_sassert(1);
     if(aster_stack[--aster_sp]) aster_pc += ASTER_INTSZ;
     else aster_pc = *(int*)&aster_dict[aster_pc];
 }
 
-void aster_f_call() {
+static void f_call() {
     aster_rstack[aster_rsp++] = aster_pc + ASTER_INTSZ;
     aster_pc = *(int*)&aster_dict[aster_pc];
 }
 
-void aster_f_ret() {
+static void f_ret() {
     aster_pc = aster_rstack[--aster_rsp];
 }
 
-void aster_f_rph() {
+static void f_rph() {
     aster_sassert(1);
     aster_rstack[aster_rsp++] = aster_stack[--aster_sp];
     aster_roassert(1);
 }
 
-void aster_f_rpl() {
+static void f_rpl() {
     aster_rassert(1);
     aster_stack[aster_sp++] = aster_rstack[--aster_rsp];
     aster_soassert(1);
 }
 
-void aster_f_rat() {
+static void f_rat() {
     aster_rassert(1);
     aster_stack[aster_sp++] = aster_rstack[aster_rsp-1];
     aster_soassert(1);
 }
 
-void aster_f_add() {
+static void f_add() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] += aster_stack[aster_sp];
 }
 
-void aster_f_sub() {
+static void f_sub() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] -= aster_stack[aster_sp];
 }
 
-void aster_f_and() {
+static void f_and() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] &= aster_stack[aster_sp];
 }
 
-void aster_f_or() {
+static void f_or() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] |= aster_stack[aster_sp];
 }
 
-void aster_f_xor() {
+static void f_xor() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] ^= aster_stack[aster_sp];
 }
 
-void aster_f_mul() {
+static void f_mul() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] *= aster_stack[aster_sp];
 }
 
-void aster_f_div() {
+static void f_div() {
     int t;
     aster_sassert(2);
     if(aster_stack[aster_sp-1]) {
@@ -229,64 +262,64 @@ void aster_f_div() {
     }
 }
 
-void aster_f_inc() {
+static void f_inc() {
     aster_sassert(1);
     aster_stack[aster_sp-1]++;
 }
 
-void aster_f_dec() {
+static void f_dec() {
     aster_sassert(1);
     aster_stack[aster_sp-1]--;
 }
 
-void aster_f_shr() {
+static void f_shr() {
     aster_sassert(1);
     aster_stack[aster_sp-1] >>= 1;
 }
 
-void aster_f_shl() {
+static void f_shl() {
     aster_sassert(1);
     aster_stack[aster_sp-1] <<= 1;
 }
 
-void aster_f_rshift() {
+static void f_rshift() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] >>= aster_stack[aster_sp];
 }
 
-void aster_f_lshift() {
+static void f_lshift() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] <<= aster_stack[aster_sp];
 }
 
-void aster_f_zeq() {
+static void f_zeq() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = aster_stack[aster_sp-1] ? 0 : -1;
 }
 
-void aster_f_zne() {
+static void f_zne() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = aster_stack[aster_sp-1] ? -1 : 0;
 }
 
-void aster_f_zge() {
+static void f_zge() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] < 0) ? 0 : -1;
 }
 
-void aster_f_zlt() {
+static void f_zlt() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = (aster_stack[aster_sp-1] < 0) ? -1 : 0;
 }
 
-void aster_f_inv() {
+static void f_inv() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = ~aster_stack[aster_sp-1];
 }
 
-void aster_f_swap() {
+static void f_swap() {
     int t;
     aster_sassert(2);
     t = aster_stack[aster_sp-1];
@@ -294,27 +327,27 @@ void aster_f_swap() {
     aster_stack[aster_sp-2] = t;
 }
 
-void aster_f_dup() {
+static void f_dup() {
     aster_sassert(1);
     aster_stack[aster_sp] = aster_stack[aster_sp-1];
     aster_sp++;
     aster_soassert(1);
 }
 
-void aster_f_over() {
+static void f_over() {
     aster_sassert(2);
     aster_stack[aster_sp] = aster_stack[aster_sp-2];
     aster_sp++;
     aster_soassert(1);
 }
 
-void aster_f_nip() {
+static void f_nip() {
     aster_sassert(2);
     aster_sp--;
     aster_stack[aster_sp-1] = aster_stack[aster_sp];
 }
 
-void aster_f_tuck() {
+static void f_tuck() {
     aster_sassert(2);
     aster_stack[aster_sp] = aster_stack[aster_sp-1];
     aster_stack[aster_sp-1] = aster_stack[aster_sp-2];
@@ -323,12 +356,12 @@ void aster_f_tuck() {
     aster_soassert(1);
 }
 
-void aster_f_drop() {
+static void f_drop() {
     aster_sassert(1);
     aster_sp--;
 }
 
-void aster_f_rot() {
+static void f_rot() {
     int t;
     aster_sassert(3);
     t = aster_stack[aster_sp-3];
@@ -338,7 +371,7 @@ void aster_f_rot() {
     aster_soassert(1);
 }
 
-void aster_f_mrot() {
+static void f_mrot() {
     int t;
     aster_sassert(3);
     t = aster_stack[aster_sp-1];
@@ -348,20 +381,20 @@ void aster_f_mrot() {
     aster_soassert(1);
 }
 
-void aster_f_depth() {
+static void f_depth() {
     aster_stack[aster_sp] = aster_sp;
     aster_sp++;
     aster_soassert(1);
 }
 
-void aster_f_pick() {
+static void f_pick() {
     aster_sassert(aster_stack[aster_sp-1]+1);
     aster_stack[aster_sp-1] =
       aster_stack[aster_sp-2-aster_stack[aster_sp-1]];
     aster_soassert(1);
 }
 
-void aster_f_roll() {
+static void f_roll() {
     int i, r, t;
     aster_sassert(1);
     r = aster_stack[--aster_sp];
@@ -373,53 +406,53 @@ void aster_f_roll() {
     aster_stack[aster_sp-1] = t;
 }
 
-void aster_f_sw() {
+static void f_sw() {
     aster_sassert(2);
     aster_bassert(aster_stack[aster_sp-1]);
     *(int*)&aster_dict[aster_stack[aster_sp-1]] = aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
-void aster_f_lw() {
+static void f_lw() {
     aster_sassert(1);
     aster_bassert(aster_stack[aster_sp-1]);
     aster_stack[aster_sp-1] = *(int*)&aster_dict[aster_stack[aster_sp-1]];
 }
 
-void aster_f_addsw() {
+static void f_addsw() {
     aster_sassert(2);
     aster_bassert(aster_stack[aster_sp-1]);
     *(int*)&aster_dict[aster_stack[aster_sp-1]] += aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
-void aster_f_sb() {
+static void f_sb() {
     aster_sassert(2);
     aster_bassert(aster_stack[aster_sp-1]);
     aster_dict[aster_stack[aster_sp-1]] = aster_stack[aster_sp-2];
     aster_sp -= 2;
 }
 
-void aster_f_lb() {
+static void f_lb() {
     aster_sassert(1);
     aster_bassert(aster_stack[aster_sp-1]);
     aster_stack[aster_sp-1] = aster_dict[aster_stack[aster_sp-1]];
 }
 
-void aster_f_here() {
+static void f_here() {
     aster_stack[aster_sp++] = aster_here;
     aster_soassert(1);
 }
 
-void aster_f_allot() {
+static void f_allot() {
     aster_sassert(1);
     aster_here += aster_stack[--aster_sp];
 }
 
-void aster_f_execute() {
+static void f_execute() {
     aster_sassert(1);
     aster_sp--;
-    if(aster_stack[aster_sp] < 0) aster_functions[~aster_stack[aster_sp]]();
+    if(aster_stack[aster_sp] < 0) functions[~aster_stack[aster_sp]]();
     else if(aster_rsp) {
         aster_rstack[aster_rsp++] = aster_pc;
         aster_pc = aster_stack[aster_sp];
@@ -435,7 +468,7 @@ struct aster_word *aster_getNextWord() {
     return w;
 }
 
-void aster_f_tick() {
+static void f_tick() {
     struct aster_word *w;
 
     w = aster_getNextWord();
@@ -454,14 +487,14 @@ struct aster_word *aster_findWordAddr(int a) {
     return 0;
 }
 
-void aster_f_isImmediate() {
+static void f_isImmediate() {
     struct aster_word *w;
     w = aster_findWordAddr(aster_stack[aster_sp-1]);
     if(!w) aster_stack[aster_sp-1] = 0;
     aster_stack[aster_sp-1] = (w->flags & ASTER_IMMEDIATE) ? -1 : 0;
 }
 
-void aster_f_find() {
+static void f_find() {
     char buf[256];
     struct aster_word *w;
     strncpy(buf, &aster_dict[aster_stack[aster_sp-1]+1],
@@ -473,14 +506,14 @@ void aster_f_find() {
     } else aster_stack[aster_sp++] = 0;
 }
 
-void aster_f_alias() {
+static void f_alias() {
     struct aster_word *w;
 
     aster_sassert(1);
-    aster_getNext(aster_nameBufP,
-      ASTER_NAMEBUFSZ-(int)(aster_nameBufP-aster_nameBuf)-1);
-    aster_words[aster_nwords].s = aster_nameBufP;
-    aster_nameBufP += strlen(aster_nameBufP)+1;
+    aster_getNext(nameBufP,
+      ASTER_NAMEBUFSZ-(int)(nameBufP-nameBuf)-1);
+    aster_words[aster_nwords].s = nameBufP;
+    nameBufP += strlen(nameBufP)+1;
     aster_sp--;
     aster_words[aster_nwords].a = aster_stack[aster_sp];
     aster_words[aster_nwords].flags = 0;
@@ -489,42 +522,42 @@ void aster_f_alias() {
     aster_nwords++;
 }
 
-void aster_f_parsec() {
+static void f_parsec() {
     aster_stack[aster_sp++] = *aster_string;
     if(*aster_string) aster_string++;
     aster_soassert(1);
 }
 
-void aster_f_emit() {
+static void f_emit() {
     aster_sassert(1);
     fputc(aster_stack[--aster_sp], stdout);
 }
 
-void aster_f_cin() {
+static void f_cin() {
     aster_stack[aster_sp++] = fgetc(stdin);
     aster_soassert(1);
 }
 
-void aster_f_colon() {
+static void f_colon() {
     *(int*)&aster_dict[ASTER_STATUS] = 1;
     aster_getNext(aster_buf, ASTER_BUFSZ);
 
-    aster_words[aster_nwords].s     = aster_nameBufP;
+    aster_words[aster_nwords].s     = nameBufP;
     aster_words[aster_nwords].flags = 0;
     aster_words[aster_nwords].a     = aster_here;
 
-    strcpy(aster_nameBufP, aster_buf);
-    aster_nameBufP += strlen(aster_nameBufP)+1;
+    strcpy(nameBufP, aster_buf);
+    nameBufP += strlen(nameBufP)+1;
 }
 
-void aster_f_noname() {
+static void f_noname() {
     *(int*)&aster_dict[ASTER_STATUS] = 1;
     aster_words[aster_nwords].s     = 0;
     aster_words[aster_nwords].flags = 0;
     aster_words[aster_nwords].a     = aster_here;
 }
 
-void aster_f_semi() {
+static void f_semi() {
     *(int*)&aster_dict[ASTER_STATUS] = 0;
     *(int*)&aster_dict[aster_here] = ~ASTER_RET;
     aster_here += ASTER_INTSZ;
@@ -536,17 +569,17 @@ void aster_f_semi() {
     }
 }
 
-void aster_f_last() {
+static void f_last() {
     aster_stack[aster_sp++] = aster_words[aster_nwords-1].a;
     aster_soassert(1);
 }
 
-void aster_f_this() {
+static void f_this() {
     aster_stack[aster_sp++] = aster_words[aster_nwords].a;
     aster_soassert(1);
 }
 
-void aster_f_immediate() {
+static void f_immediate() {
     aster_words[aster_nwords-1].flags |= ASTER_IMMEDIATE;
 }
 
@@ -591,7 +624,7 @@ int aster_intIn(int *a, int l, int n) {
     return 0;
 }
 
-void aster_f_see() {
+static void f_see() {
     struct aster_word *w;
     int i, n;
     int br[200];
@@ -604,7 +637,7 @@ void aster_f_see() {
     printf("\n");
 
     if(w->a < 0) {
-        printf("function $%.X\n", (unsigned)(size_t)aster_functions[~w->a]);
+        printf("function $%.X\n", (unsigned)(size_t)functions[~w->a]);
         return;
     }
 
@@ -636,7 +669,7 @@ void aster_f_see() {
     printf("\n");
 }
 
-void aster_f_words() {
+static void f_words() {
     int i, x;
 
     x = 0;
@@ -648,12 +681,12 @@ void aster_f_words() {
     printf("\n");
 }
 
-void aster_f_include() {
+static void f_include() {
     aster_getNext(aster_buf, ASTER_BUFSZ);
     aster_runFile(aster_buf);
 }
 
-void aster_f_openFile() {
+static void f_openFile() {
     aster_sassert(3);
     memcpy(aster_buf, &aster_dict[aster_stack[aster_sp-3]],
       aster_stack[aster_sp-2]);
@@ -669,14 +702,14 @@ void aster_f_openFile() {
     aster_soassert(2);
 }
 
-void aster_f_closeFile() {
+static void f_closeFile() {
     aster_sassert(1);
     fclose(aster_files[aster_stack[aster_sp-1]]);
     aster_files[aster_stack[aster_sp-1]] = 0;
     aster_stack[aster_sp-1] = 0;
 }
 
-void aster_f_validFile() {
+static void f_validFile() {
     aster_sassert(1);
     if(aster_stack[aster_sp-1] < 0 || aster_stack[aster_sp-1] >= ASTER_NFILES)
         aster_stack[aster_sp-1] = -1;
@@ -685,38 +718,53 @@ void aster_f_validFile() {
           (aster_files[aster_stack[aster_sp-1]] != 0)*-1;
 }
 
-void aster_f_fgetc() {
+static void f_fgetc() {
     aster_sassert(1);
     aster_stack[aster_sp-1] = fgetc(aster_files[aster_stack[aster_sp-1]]);
 }
 
-void aster_f_fputc() {
+static void f_fputc() {
     aster_sassert(2);
     aster_sp -= 2;
     fputc(aster_stack[aster_sp], aster_files[aster_stack[aster_sp+1]]);
 }
 
-void aster_f_if1() {
+static void f_if1() {
+    int dep = 1;
     aster_sassert(1);
-    if(!aster_stack[--aster_sp]) aster_waitThen = 1;
+    if(!aster_stack[--aster_sp]) {
+        for(;;) {
+            aster_getNext(aster_buf, ASTER_BUFSZ);
+            if(!(*aster_buf)) break;
+            if(!strcasecmp(aster_buf, "[if]")) dep++;
+            else if(!strcasecmp(aster_buf, "[else]")) {
+                if(!dep) break;
+            } else if(!strcasecmp(aster_buf, "[then]") && !--dep) break;
+        }
+    }
 }
 
-void aster_f_accessArgs() {
+static void f_else1() {
+    aster_stack[aster_sp++] = 0;
+    f_if1();
+}
+
+static void f_accessArgs() {
     aster_usedArgs = -1;
 }
 
-void aster_f_marker() {
+static void f_marker() {
     int i;
     aster_sassert(1);
     aster_here = aster_stack[--aster_sp];
     for(i = 0; i < aster_nwords; i++)
         if(aster_words[i].a >= aster_here) {
             aster_nwords = i;
-            aster_nameBufP = aster_words[i].s;
+            nameBufP = aster_words[i].s;
         }
 }
 
-void aster_f_error() {
+static void f_error() {
     aster_sassert(1);
     *aster_buf = 0;
     aster_error = aster_stack[--aster_sp];
@@ -724,7 +772,7 @@ void aster_f_error() {
 
 void aster_resetStacks();
 
-void aster_f_catch() {
+static void f_catch() {
     int rsp;
     aster_sassert(1);
     rsp = aster_rsp;
@@ -736,13 +784,11 @@ void aster_f_catch() {
 
 int aster_number(char *s, int *n);
 
-void aster_f_number() {
-    char *buf;
+static void f_number() {
     aster_sassert(2);
-    buf = alloca(aster_stack[aster_sp-1]+1);
-    memcpy(buf, &aster_dict[aster_stack[aster_sp-2]], aster_stack[aster_sp-1]);
-    buf[aster_stack[aster_sp-1]] = 0;
-    if(aster_number(buf, &aster_stack[aster_sp-2]))
+    memcpy(aster_buf, &aster_dict[aster_stack[aster_sp-2]], aster_stack[aster_sp-1]);
+    aster_buf[aster_stack[aster_sp-1]] = 0;
+    if(aster_number(aster_buf, &aster_stack[aster_sp-2]))
         aster_stack[aster_sp-1] = -1;
     else {
         aster_sp--;
@@ -750,7 +796,7 @@ void aster_f_number() {
     }
 }
 
-void aster_f_evaluate() {
+static void f_evaluate() {
     char buf[1024];
     aster_sassert(2);
     strncpy(buf,
@@ -759,7 +805,7 @@ void aster_f_evaluate() {
     aster_runString(buf);
 }
 
-void aster_f_time() {
+static void f_time() {
     time_t t;
     t = time(0);
     aster_stack[aster_sp++] = t;
@@ -767,7 +813,7 @@ void aster_f_time() {
     aster_soassert(2);
 }
 
-void aster_f_bye() {
+static void f_bye() {
     exit(0);
 }
 
@@ -776,9 +822,9 @@ void aster_f_bye() {
 void aster_addC(void (*fun)(void), const char *name, char flags) {
     aster_words[aster_nwords].s     = (char*)name;
     aster_words[aster_nwords].flags = flags;
-    aster_words[aster_nwords].a     = ~aster_nfunctions;
+    aster_words[aster_nwords].a     = ~nfunctions;
     aster_nwords++;
-    aster_functions[aster_nfunctions++] = fun;
+    functions[nfunctions++] = fun;
 }
 
 void aster_addConstant(int v, const char *name) {
@@ -811,15 +857,14 @@ void aster_init(int argc, char **args) {
     aster_here = ASTER_START+argc*ASTER_INTSZ;
     aster_nwords = 0;
     aster_error = 0;
-    aster_waitThen = 0;
     *(int*)&aster_dict[ASTER_BASE] = 10;
     *(int*)&aster_dict[ASTER_STATUS] = 0;
     *(int*)&aster_dict[ASTER_ARGC] = argc;
-    aster_functions[ASTER_JMP] = aster_f_jmp;
-    aster_functions[ASTER_JZ] = aster_f_jz;
-    aster_functions[ASTER_LIT] = aster_f_lit;
-    aster_functions[ASTER_RET] = aster_f_ret;
-    aster_nfunctions = ASTER_USER;
+    functions[ASTER_JMP] = f_jmp;
+    functions[ASTER_JZ] = f_jz;
+    functions[ASTER_LIT] = f_lit;
+    functions[ASTER_RET] = f_ret;
+    nfunctions = ASTER_USER;
 
     aster_addConstant(~ASTER_JMP, "jmp");
     aster_addConstant(~ASTER_JZ, "jz");
@@ -832,79 +877,88 @@ void aster_init(int argc, char **args) {
         aster_here += strlen(args[i])+1;
     }
 
-    aster_addC(aster_f_rph, ">r", 0);
-    aster_addC(aster_f_rpl, "r>", 0);
-    aster_addC(aster_f_rat, "r@", 0);
-    aster_addC(aster_f_add, "+",   0);
-    aster_addC(aster_f_sub, "-",   0);
-    aster_addC(aster_f_and, "and", 0);
-    aster_addC(aster_f_or,  "or",  0);
-    aster_addC(aster_f_xor, "xor", 0);
-    aster_addC(aster_f_mul, "*",   0);
-    aster_addC(aster_f_div, "/mod", 0);
-    aster_addC(aster_f_inc, "1+", 0);
-    aster_addC(aster_f_dec, "1-", 0);
-    aster_addC(aster_f_shr, "2/", 0);
-    aster_addC(aster_f_shl, "2*", 0);
-    aster_addC(aster_f_rshift, "rshift", 0);
-    aster_addC(aster_f_lshift, "lshift", 0);
-    aster_addC(aster_f_zeq, "0=", 0);
-    aster_addC(aster_f_zne, "0<>", 0);
-    aster_addC(aster_f_zge, "0>=", 0);
-    aster_addC(aster_f_zlt, "0<", 0);
-    aster_addC(aster_f_inv, "invert", 0);
-    aster_addC(aster_f_swap, "swap", 0);
-    aster_addC(aster_f_dup,  "dup",  0);
-    aster_addC(aster_f_over, "over", 0);
-    aster_addC(aster_f_nip,  "nip",  0);
-    aster_addC(aster_f_tuck, "tuck", 0);
-    aster_addC(aster_f_drop, "drop", 0);
-    aster_addC(aster_f_rot,  "rot",  0);
-    aster_addC(aster_f_mrot, "-rot", 0);
-    aster_addC(aster_f_depth, "depth", 0);
-    aster_addC(aster_f_pick, "pick", 0);
-    aster_addC(aster_f_roll, "roll", 0);
-    aster_addC(aster_f_sw, "!", 0);
-    aster_addC(aster_f_lw, "@", 0);
-    aster_addC(aster_f_addsw, "+!", 0);
-    aster_addC(aster_f_sb, "c!", 0);
-    aster_addC(aster_f_lb, "c@", 0);
-    aster_addC(aster_f_here, "here", 0);
-    aster_addC(aster_f_allot, "allot", 0);
-    aster_addC(aster_f_execute, "execute", 0);
-    aster_addC(aster_f_tick, "'", 0);
-    aster_addC(aster_f_isImmediate, "immediate?", 0);
-    aster_addC(aster_f_find, "find", 0);
-    aster_addC(aster_f_alias, "alias", 0);
-    aster_addC(aster_f_parsec, "parseC", 0);
-    aster_addC(aster_f_emit, "emit", 0);
-    aster_addC(aster_f_cin, "cin", 0);
-    aster_addC(aster_f_colon,  ":", 0);
-    aster_addC(aster_f_noname, ":noname", 0);
-    aster_addC(aster_f_semi,   ";", ASTER_IMMEDIATE);
-    aster_addC(aster_f_last,   "last", 0);
-    aster_addC(aster_f_this,   "this", 0);
-    aster_addC(aster_f_immediate, "immediate", 0);
-    aster_addC(aster_f_see, "see", 0);
-    aster_addC(aster_f_words, "words", 0);
-    aster_addC(aster_f_include, "include", 0);
-    aster_addC(aster_f_openFile, "open-file", 0);
-    aster_addC(aster_f_closeFile, "close-file", 0);
-    aster_addC(aster_f_validFile, "valid-file?", 0);
-    aster_addC(aster_f_fputc, "fputc", 0);
-    aster_addC(aster_f_fgetc, "fgetc", 0);
-    aster_addC(aster_f_if1, "[if]", 0);
-    aster_addC(aster_f_accessArgs, "access-args", 0);
-    aster_addC(aster_f_marker, "marker!", 0);
-    aster_addC(aster_f_error, "error", 0);
-    aster_addC(aster_f_catch, "catch", 0);
-    aster_addC(aster_f_number, "number", 0);
-    aster_addC(aster_f_evaluate, "evaluate", 0);
-    aster_addC(aster_f_time, "time", 0);
-    aster_addC(aster_f_bye, "bye", 0);
+    aster_addC(f_rph, ">r", 0);
+    aster_addC(f_rpl, "r>", 0);
+    aster_addC(f_rat, "r@", 0);
+    aster_addC(f_add, "+",   0);
+    aster_addC(f_sub, "-",   0);
+    aster_addC(f_and, "and", 0);
+    aster_addC(f_or,  "or",  0);
+    aster_addC(f_xor, "xor", 0);
+    aster_addC(f_mul, "*",   0);
+    aster_addC(f_div, "/mod", 0);
+    aster_addC(f_inc, "1+", 0);
+    aster_addC(f_dec, "1-", 0);
+    aster_addC(f_shr, "2/", 0);
+    aster_addC(f_shl, "2*", 0);
+    aster_addC(f_rshift, "rshift", 0);
+    aster_addC(f_lshift, "lshift", 0);
+    aster_addC(f_zeq, "0=", 0);
+    aster_addC(f_zne, "0<>", 0);
+    aster_addC(f_zge, "0>=", 0);
+    aster_addC(f_zlt, "0<", 0);
+    aster_addC(f_inv, "invert", 0);
+    aster_addC(f_swap, "swap", 0);
+    aster_addC(f_dup,  "dup",  0);
+    aster_addC(f_over, "over", 0);
+    aster_addC(f_nip,  "nip",  0);
+    aster_addC(f_tuck, "tuck", 0);
+    aster_addC(f_drop, "drop", 0);
+    aster_addC(f_rot,  "rot",  0);
+    aster_addC(f_mrot, "-rot", 0);
+    aster_addC(f_depth, "depth", 0);
+    aster_addC(f_pick, "pick", 0);
+    aster_addC(f_roll, "roll", 0);
+    aster_addC(f_sw, "!", 0);
+    aster_addC(f_lw, "@", 0);
+    aster_addC(f_addsw, "+!", 0);
+    aster_addC(f_sb, "c!", 0);
+    aster_addC(f_lb, "c@", 0);
+    aster_addC(f_here, "here", 0);
+    aster_addC(f_allot, "allot", 0);
+    aster_addC(f_execute, "execute", 0);
+    aster_addC(f_tick, "'", 0);
+    aster_addC(f_isImmediate, "immediate?", 0);
+    aster_addC(f_find, "find", 0);
+    aster_addC(f_alias, "alias", 0);
+    aster_addC(f_parsec, "parseC", 0);
+    aster_addC(f_emit, "emit", 0);
+    aster_addC(f_cin, "cin", 0);
+    aster_addC(f_colon,  ":", 0);
+    aster_addC(f_noname, ":noname", 0);
+    aster_addC(f_semi,   ";", ASTER_IMMEDIATE);
+    aster_addC(f_last,   "last", 0);
+    aster_addC(f_this,   "this", 0);
+    aster_addC(f_immediate, "immediate", 0);
+    aster_addC(f_see, "see", 0);
+    aster_addC(f_words, "words", 0);
+    aster_addC(f_include, "include", 0);
+    aster_addC(f_openFile, "open-file", 0);
+    aster_addC(f_closeFile, "close-file", 0);
+    aster_addC(f_validFile, "valid-file?", 0);
+    aster_addC(f_fputc, "fputc", 0);
+    aster_addC(f_fgetc, "fgetc", 0);
+    aster_addC(f_if1, "[if]", ASTER_IMMEDIATE);
+    aster_addC(f_else1, "[else]", ASTER_IMMEDIATE);
+    aster_addC(f_accessArgs, "access-args", 0);
+    aster_addC(f_marker, "marker!", 0);
+    aster_addC(f_error, "error", 0);
+    aster_addC(f_catch, "catch", 0);
+    aster_addC(f_number, "number", 0);
+    aster_addC(f_evaluate, "evaluate", 0);
+    aster_addC(f_time, "time", 0);
+    aster_addC(f_bye, "bye", 0);
 
 #ifdef ASTER_TERMIOS
-    aster_addC(aster_f_getch, "key", 0);
+    aster_addC(f_getch, "key", 0);
+#endif
+#ifdef ASTER_CONIO
+    aster_addC(f_getch, "key", 0);
+    aster_addC(clrscr, "page", 0);
+    aster_addC(f_atxy, "at-xy", 0);
+#endif
+#ifdef ASTER_WIN32
+    aster_addC(f_getch, "key", 0);
 #endif
 
     aster_addConstant(ASTER_BASE,   "base");
@@ -1011,11 +1065,6 @@ void aster_run() {
         aster_getNext(aster_buf, ASTER_BUFSZ);
         if(!(*aster_buf)) return;
 
-        if(aster_waitThen) {
-            if(!strcasecmp(aster_buf, "[then]")) aster_waitThen = 0;
-            continue;
-        }
-
         if((w = aster_findWord(aster_buf))) {
             if(*(int*)&aster_dict[ASTER_STATUS]) {
                 if(w->flags & ASTER_IMMEDIATE) {
@@ -1096,7 +1145,7 @@ void aster_printBacktrace() {
 }
 
 void aster_printError() {
-    printf("error: %s", aster_buf);
+    if(*aster_buf) printf("error: %s", aster_buf);
     aster_printBacktrace();
 }
 
