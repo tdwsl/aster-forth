@@ -1,11 +1,16 @@
 
 CC=gcc
-ARGS=-O2
+# for windows may want to change to aster.exe
+OUT=aster
+
+# add -DASTER_TERMIOS/-DASTER_CONIO/-DASTER_WIN32 for console functionality
+# (no support for win32 page/at-xy yet)
+ARGS=-O2 -DASTER_TERMIOS
 
 aster: aster.c makeboot aster.f aster.h
 	./makeboot
-	$(CC) -c $(ARGS) aster.c -DASTER_TERMIOS
-	$(CC) $(ARGS) aster.o main.c -o aster
+	$(CC) -c $(ARGS) aster.c
+	$(CC) $(ARGS) aster.o main.c -o $(OUT)
 
 makeboot: makeboot.c
 	$(CC) $(ARGS) makeboot.c -o makeboot
