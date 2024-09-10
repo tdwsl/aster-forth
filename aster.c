@@ -730,7 +730,7 @@ static void f_fputc() {
 }
 
 static void f_if1() {
-    int dep = 1;
+    int dep = 0;
     aster_sassert(1);
     if(!aster_stack[--aster_sp]) {
         for(;;) {
@@ -739,7 +739,7 @@ static void f_if1() {
             if(!strcasecmp(aster_buf, "[if]")) dep++;
             else if(!strcasecmp(aster_buf, "[else]")) {
                 if(!dep) break;
-            } else if(!strcasecmp(aster_buf, "[then]") && !--dep) break;
+            } else if(!strcasecmp(aster_buf, "[then]") && !(dep--)) break;
         }
     }
 }
