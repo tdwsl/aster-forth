@@ -313,7 +313,9 @@ cstack value csp
   0 ?do over i + c@ over i + c@ <> if 2drop unloop 0 exit then loop
   2drop -1 ;
 
-32 word key find nip dup 0= [if]
+: exists? 32 word find nip ;
+
+exists? key 0= [if]
 
 : key cin begin cin 10 = until ;
 
@@ -325,7 +327,7 @@ cstack value csp
   loop
   drop r> ;
 
-[then] [if]
+[else]
 
 : accept ( a u -- u )
   >r 0 >r begin
@@ -398,8 +400,12 @@ create pad pad-size allot
 
 \ ansi escape
 
+exists? page 0= [if]
+
 : esc[ 27 emit [char] [ emit ;
 : page esc[ ." 2J" esc[ ." H" ;
 : at-xy esc[ ." H" ?dup if esc[ (.) type ." B" then
   ?dup if esc[ (.) type ." C" then ;
+
+[then]
 
