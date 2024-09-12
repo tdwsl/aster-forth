@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #ifdef ASTER_TERMIOS
 #include <termios.h>
@@ -849,9 +850,20 @@ void aster_addWord(int a, const char *name, int flags) {
     aster_nwords++;
 }
 
+void aster_printError();
+
+void aster_sigint(int sig) {
+    signal(sig, SIG_IGN);
+    strcpy(aster_buf, "SIGINT\n");
+    aster_printError();
+    aster_resetStacks();
+    signal(SIGINT, aster_sigint);
+}
+
 void aster_init(int argc, char **args) {
     int i;
 
+    signal(SIGINT, aster_sigint);
     aster_sp = 0;
     aster_rsp = 0;
     aster_here = ASTER_START+argc*ASTER_INTSZ;
@@ -1051,8 +1063,6 @@ int aster_number(char *s, int *n) {
     if(neg) *n *= -1;
     return 1;
 }
-
-void aster_printError();
 
 void aster_run() {
     int n;
