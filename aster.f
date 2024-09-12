@@ -128,8 +128,12 @@ variable struct-sz
   >r begin dup while over r@ swap c! 1- >r 1+ r> repeat r> drop 2drop ;
 
 : move ( a a u -- )
-  >r begin r@ while over c@ over c! r> 1- >r
-  1+ >r 1+ r> repeat r> drop 2drop ;
+  >r 2dup < if
+    begin r@ while r> 1- >r over r@ + c@ over r@ + c! repeat
+  else
+    begin r@ while over c@ over c! r> 1- >r
+    1+ >r 1+ r> repeat
+  then r> drop 2drop ;
 
 : erase ( a u -- )
   >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
