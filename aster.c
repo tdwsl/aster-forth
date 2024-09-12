@@ -858,6 +858,7 @@ void aster_sigint(int sig) {
     aster_printError();
     aster_resetStacks();
     signal(SIGINT, aster_sigint);
+    aster_pc = 0;
 }
 
 void aster_init(int argc, char **args) {
