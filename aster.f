@@ -273,18 +273,18 @@ picend value picp
 
 :noname
   compile? 0= if
-    ." word is compile only" cr -1 error then ; is! compile-only
+    ." word is compile only" cr -1 throw then ; is! compile-only
 
 :noname
   compile-only
   bsp @ ['] bsp >= if
-    ." branch stack overflow" cr bstack bsp ! -1 error
+    ." branch stack overflow" cr bstack bsp ! -1 throw
   else bsp @ ! cell bsp +! then ; is! >b
 
 :noname
   compile-only
   bsp @ bstack <= if
-    ." branch stack underflow" cr bstack bsp ! -1 error
+    ." branch stack underflow" cr bstack bsp ! -1 throw
   else [ cell negate ]l bsp +! bsp @ @ then ; is! b>
 
 create cstack 64 cells allot
@@ -293,12 +293,12 @@ cstack value csp
 
 : >c compile-only csp
   dup cstacktop >= if ." compile stack overflow" cr
-  cstack to csp -1 error then
+  cstack to csp -1 throw then
   ! csp cell+ to csp ;
 
 : c> compile-only csp cell - dup
   dup cstack < if ." compile stack underflow" cr
-  cstack to csp -1 error then
+  cstack to csp -1 throw then
   to csp @ ;
 
 : case compile-only 0 >c ; immediate
@@ -344,8 +344,6 @@ exists? key 0= [if]
   again ;
 
 [then]
-
-: throw if ." throw" cr -1 error then ;
 
 \ file handling words
 
