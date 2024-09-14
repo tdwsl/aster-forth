@@ -29,7 +29,7 @@ extern unsigned char aster_dict[];
 extern int aster_stack[];
 extern int aster_rstack[];
 extern unsigned char aster_rsp, aster_sp;
-extern unsigned char aster_error;
+extern int aster_error;
 extern unsigned char aster_usedArgs;
 typedef void (*aster_fun)(void);
 extern aster_fun aster_functions[];
