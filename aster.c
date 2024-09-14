@@ -82,7 +82,7 @@ char *aster_string;
 const char *aster_fileModes[] = { "r", "w", "rw", "rb", "wb", "rwb", };
 FILE *aster_files[ASTER_NFILES];
 int aster_filen = 0;
-unsigned char aster_error = 0;
+int aster_error = 0;
 unsigned char aster_usedArgs = 0;
 int aster_lastFun;
 static aster_fun functions[ASTER_MAXFUNS];
@@ -152,11 +152,7 @@ void aster_runAddr(int pc) {
             aster_rstack[aster_rsp++] = aster_pc;
             aster_pc = a;
         }
-    } while((aster_pc != 0) & (!aster_error));
-
-    if(aster_rsp != 0 && !aster_error) {
-        sprintf(aster_buf, "%s", aster_sOB); aster_error = 1;
-    }
+    } while(aster_pc != 0 && !aster_error);
 }
 
 struct aster_word *aster_findWord(char *s) {
@@ -453,8 +449,7 @@ static void f_allot() {
 static void f_execute() {
     aster_sassert(1);
     aster_sp--;
-    if(aster_stack[aster_sp] < 0) functions[~aster_stack[aster_sp]]();
-    else if(aster_rsp) {
+    if(aster_rsp && aster_stack[aster_sp] >= 0) {
         aster_rstack[aster_rsp++] = aster_pc;
         aster_pc = aster_stack[aster_sp];
     } else aster_runAddr(aster_stack[aster_sp]);
@@ -774,13 +769,16 @@ static void f_error() {
 void aster_resetStacks();
 
 static void f_catch() {
-    int rsp;
+    int rsp, pc;
     aster_sassert(1);
     rsp = aster_rsp;
+    pc = aster_pc;
     aster_execute(aster_stack[--aster_sp]);
     if(aster_error) {
-        aster_resetStacks(); aster_rsp = rsp; aster_stack[aster_sp++] = -1;
+        aster_stack[0] = aster_error;
+        aster_resetStacks(); aster_rsp = rsp; aster_sp = 1;
     } else aster_stack[aster_sp++] = 0;
+    aster_pc = pc;
 }
 
 int aster_number(char *s, int *n);
@@ -955,7 +953,7 @@ void aster_init(int argc, char **args) {
     aster_addC(f_else1, "[else]", ASTER_IMMEDIATE);
     aster_addC(f_accessArgs, "access-args", 0);
     aster_addC(f_marker, "marker!", 0);
-    aster_addC(f_error, "error", 0);
+    aster_addC(f_error, "throw", 0);
     aster_addC(f_catch, "catch", 0);
     aster_addC(f_number, "number", 0);
     aster_addC(f_evaluate, "evaluate", 0);
