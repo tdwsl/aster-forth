@@ -1,7 +1,7 @@
 #ifndef ASTER_H
 #define ASTER_H
 
-#define ASTER_DICTSZ      245760
+#define ASTER_DICTSZ      1048576
 #define ASTER_MAXWORDS    8000
 #define ASTER_BUFSZ       200
 #define ASTER_LINEBUFSZ   560
@@ -59,7 +59,7 @@ static const char *aster_sOB = "invalid memory address\n";
 extern char aster_buf[];
 
 void aster_init(int argc, char **args);
-void aster_runFile(const char *filename);
+int aster_runFile(const char *filename);
 void aster_runString(char *s);
 void aster_runStdin();
 void aster_runAddr(int pc);

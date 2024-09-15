@@ -66,7 +66,7 @@ struct aster_word {
     int end;
 };
 
-unsigned char aster_dict[ASTER_DICTSZ];
+unsigned char aster_dict[ASTER_DICTSZ+ASTER_INTSZ];
 int aster_stack[256];
 int aster_rstack[256];
 unsigned char aster_sp=0, aster_rsp=0;
@@ -87,6 +87,7 @@ unsigned char aster_usedArgs = 0;
 int aster_lastFun;
 static aster_fun functions[ASTER_MAXFUNS];
 static int nfunctions = 0;
+static char started = 0;
 
 void aster_getNext(char *buf, int max) {
     int i;
@@ -863,6 +864,7 @@ void aster_init(int argc, char **args) {
     int i;
 
     signal(SIGINT, aster_sigint);
+    started = 0;
     aster_sp = 0;
     aster_rsp = 0;
     aster_here = ASTER_START+argc*ASTER_INTSZ;
@@ -977,7 +979,6 @@ void aster_init(int argc, char **args) {
     aster_addConstant(ASTER_INTSZ,  "cell");
     aster_addConstant(ASTER_ARGC,   "argc");
     aster_addConstant(ASTER_START,  "(args)");
-    aster_addConstant(ASTER_DICTSZ, "heap0");
     aster_addConstant(0, "r/o");
     aster_addConstant(1, "w/o");
     aster_addConstant(2, "r/w");
@@ -1103,16 +1104,16 @@ void aster_run() {
     if(aster_error) aster_printError();
 }
 
-void aster_runFile(const char *filename) {
+int aster_runFile(const char *filename) {
     char buf[ASTER_LINEBUFSZ];
     char *p;
     FILE *fp;
 
     fp = fopen(filename, "r");
     if(!fp) {
-        sprintf(aster_buf, "failed to open %s\n", filename);
         aster_error = 1;
-        return;
+        sprintf(aster_buf, "failed to open %s\n", filename);
+        return 0;
     }
 
     p = buf;
@@ -1124,6 +1125,7 @@ void aster_runFile(const char *filename) {
     }
 
     fclose(fp);
+    return 1;
 }
 
 struct aster_word *aster_addrWord(int a) {

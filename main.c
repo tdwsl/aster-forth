@@ -16,7 +16,7 @@ int main(int argc, char **args) {
         aster_init(argc, args);
         aster_runString(aster_boot);
 
-        aster_runFile(s);
+        if(!aster_runFile(s)) { printf("failed to open %s\n", s); return 1; }
         for(i = 1; !aster_usedArgs && i < argc; i++)
             aster_runFile(args[i]);
     } else {

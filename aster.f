@@ -138,12 +138,8 @@ variable struct-sz
 : erase ( a u -- )
   >r begin r@ while 0 over c! 1+ r> 1- >r repeat r> 2drop ;
 
-heap0 value heap
-: hallot negate heap + to heap ;
-
-: heap-save ( a u -- )
-  dup hallot
-  heap swap move ;
+create strings 16 1024 * allot
+strings value stringp
 
 : parse-name ( -- a u )
   here begin
@@ -158,7 +154,8 @@ heap0 value heap
   r> drop 1- here tuck - ;
 
 : str, ( a u -- a u )
-  dup >r heap-save heap r> ;
+  >r stringp r@ move
+  stringp r> 2dup + to stringp ;
 
 : word ( c -- a )
   >r here 1+ begin
