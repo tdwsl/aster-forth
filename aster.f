@@ -389,6 +389,8 @@ here 10 c,
 168 constant pad-size
 create pad pad-size allot
 
+: ," [char] " word count 1+ allot drop ;
+
 \ redefine looping to allow multiple whiles
 
 : begin compile-only here >c ; immediate
